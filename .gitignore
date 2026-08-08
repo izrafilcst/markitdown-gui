@@ -1,0 +1,23 @@
+# Ruflo local secrets and runtime data
+.env
+.env.local
+.env.*.local
+.claude-flow/data/
+.claude-flow/logs/
+.claude-flow/sessions/
+
+# Ambiente virtual e artefatos do Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Empacotamento
+build/
+dist/
+*.spec.bak
+
+# Coordenacao local do enxame
+.swarm/
+.claude-flow/
+ruvector.db
