@@ -254,3 +254,11 @@ def test_trocar_para_a_aba_de_recentes_recarrega(qapp, pasta):
     janela.abas.setCurrentIndex(1)
     qapp.processEvents()
     assert janela.aba_recentes.quantidade_exibida() == 1
+
+
+def test_janela_tem_icone(qapp):
+    """Sem isto a janela e a barra de tarefas mostram o icone generico do Qt."""
+    janela = MainWindow()
+    icone = janela.windowIcon()
+    assert not icone.isNull()
+    assert len(icone.availableSizes()) >= 3

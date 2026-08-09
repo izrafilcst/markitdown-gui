@@ -52,3 +52,41 @@ def test_escala_padrao_continua_seguindo_a_tela(qapp):
 
     p = icons.pixmap("arquivo", tamanho=32)
     assert p.width() == max(1, round(32 * _escala()))
+
+
+# --------------------------------------------------------- marca do app
+
+def test_marca_desenha_em_qualquer_tamanho(qapp):
+    for lado in (16, 32, 64, 256):
+        p = icons.marca(lado, escala=1.0)
+        assert not p.isNull()
+        assert p.width() == lado and p.height() == lado
+
+
+def test_marca_usa_as_cores_do_tema(qapp):
+    """A marca sai de theme.COLOR, e nao de hex escrito na mao."""
+    from markitdown_gui.ui import theme
+
+    p = icons.marca(64, escala=1.0).toImage()
+    cores = {p.pixelColor(x, y).name().upper()
+             for x in range(0, 64, 4) for y in range(0, 64, 4)}
+    assert theme.COLOR["primary"].upper() in cores
+
+
+def test_icone_do_app_nao_e_vazio(qapp):
+    icone = icons.icone_do_app()
+    assert not icone.isNull()
+    assert len(icone.availableSizes()) >= 3
+
+
+def test_marca_e_deterministica(qapp):
+    """Mesmo pedido, mesmos bytes. O .ico do build depende disso."""
+    a = icons.marca(64, escala=1.0).toImage()
+    b = icons.marca(64, escala=1.0).toImage()
+    assert a == b
+
+
+def test_marca_ignora_a_tela_quando_a_escala_e_explicita(qapp):
+    p = icons.marca(48, escala=1.0)
+    assert p.devicePixelRatio() == 1.0
+    assert p.width() == 48

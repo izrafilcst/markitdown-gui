@@ -202,3 +202,65 @@ def icone(nome: str, cor: str | None = None, tamanho: int = 20) -> "QIcon":
     from PySide6.QtGui import QIcon
 
     return QIcon(pixmap(nome, cor, tamanho))
+
+
+# Tamanhos que o Windows pede: barra de titulo, barra de tarefas, Alt+Tab
+# e a visualizacao grande do Explorer.
+TAMANHOS_DO_APP = (16, 24, 32, 48, 64, 128, 256)
+
+
+def marca(tamanho: int = 256, escala: float | None = None) -> "QPixmap":
+    """O simbolo do aplicativo: quadrado arredondado com o glifo dentro.
+
+    Esta funcao e a unica fonte do desenho. A janela chama daqui e o
+    `build.py` chama daqui para gerar o `.ico` do executavel, entao o
+    icone da barra de tarefas nunca fica diferente do icone do arquivo.
+    Antes o desenho existia so no build, e a janela ficava com o icone
+    generico do Qt.
+
+    As cores saem de `theme.COLOR`, entao a marca acompanha a paleta. Na
+    pratica ela quase nao muda entre os temas: o Mint Leaf e o mesmo nos
+    dois e o glifo e escuro nos dois.
+    """
+    from PySide6.QtCore import QRectF, Qt
+    from PySide6.QtGui import QBrush, QColor, QPainter, QPixmap
+
+    if escala is None:
+        escala = _escala()
+    lado = max(1, round(tamanho * escala))
+
+    imagem = QPixmap(lado, lado)
+    imagem.fill(Qt.GlobalColor.transparent)
+
+    pintor = QPainter(imagem)
+    pintor.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+    pintor.setPen(Qt.PenStyle.NoPen)
+    pintor.setBrush(QBrush(QColor(theme.COLOR["primary"])))
+    raio = lado * 0.22
+    pintor.drawRoundedRect(QRectF(0, 0, lado, lado), raio, raio)
+
+    glifo = max(8, int(lado * 0.56))
+    dentro = pixmap("arquivo", theme.COLOR["on_primary"], glifo, escala=1.0)
+    pintor.drawPixmap(
+        int((lado - dentro.width()) / 2),
+        int((lado - dentro.height()) / 2),
+        dentro,
+    )
+    pintor.end()
+
+    imagem.setDevicePixelRatio(escala)
+    return imagem
+
+
+def icone_do_app() -> "QIcon":
+    """A marca em todos os tamanhos que o Windows costuma pedir.
+
+    Um QIcon com varios tamanhos deixa o Windows escolher o melhor para
+    cada lugar, em vez de esticar um so e sair borrado no Alt+Tab.
+    """
+    from PySide6.QtGui import QIcon
+
+    icone_pronto = QIcon()
+    for lado in TAMANHOS_DO_APP:
+        icone_pronto.addPixmap(marca(lado, escala=1.0))
+    return icone_pronto

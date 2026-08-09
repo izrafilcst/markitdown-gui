@@ -56,6 +56,7 @@ class MainWindow(QMainWindow):
         """`historico_em` aponta o banco do historico. So os testes usam."""
         super().__init__(parent)
         self.setWindowTitle(APP_NAME)
+        self.setWindowIcon(icons.icone_do_app())
         self.setAcceptDrops(True)
         self.resize(880, 640)
 

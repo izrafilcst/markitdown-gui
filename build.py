@@ -32,55 +32,36 @@ RAIZ = Path(__file__).resolve().parent
 RECURSOS = RAIZ / "resources"
 ICONE = RECURSOS / "icone.ico"
 
-TAMANHOS = (16, 24, 32, 48, 64, 128, 256)
-
 
 def gerar_icone() -> Path:
-    """Desenha o icone do app a partir dos proprios tokens de design.
+    """Grava resources/icone.ico a partir da marca do proprio app.
 
-    Nada de arquivo de imagem vindo de fora: o icone sai das mesmas cores
-    e do mesmo desenho que a interface usa, entao ele nunca fica fora de
-    sincronia com o tema.
+    O desenho NAO mora aqui. Ele vem de `ui.icons.marca`, que e a mesma
+    funcao que a janela usa para o icone da barra de titulo. Antes o
+    desenho era duplicado neste arquivo, e o resultado foi previsivel: o
+    executavel tinha icone e a janela nao.
+
+    escala=1.0 e obrigatorio: o padrao segue o devicePixelRatio da tela,
+    o que e certo para a interface e errado para um arquivo, que precisa
+    de pixels exatos. Sem isso o mesmo comando produziria um .ico
+    diferente em cada monitor.
     """
-    from PySide6.QtCore import QRectF, Qt
-    from PySide6.QtGui import QBrush, QColor, QImage, QPainter
     from PySide6.QtWidgets import QApplication
 
+    # Import aqui dentro, e nao no topo: assim `build` pode ser
+    # importado por outro script sem carregar Qt de imediato.
     from markitdown_gui.ui import icons, theme
+    from markitdown_gui.ui.icons import TAMANHOS_DO_APP
 
     app = QApplication.instance() or QApplication([])
     del app
 
+    # Tema claro fixo: o .ico e um arquivo versionado, e ele nao pode
+    # mudar de bytes conforme o tema do Windows de quem roda o build.
+    theme.definir_tema("claro")
+
     RECURSOS.mkdir(parents=True, exist_ok=True)
-    quadros = []
-    for lado in TAMANHOS:
-        imagem = QImage(lado, lado, QImage.Format.Format_ARGB32)
-        imagem.fill(Qt.GlobalColor.transparent)
-
-        pintor = QPainter(imagem)
-        pintor.setRenderHint(QPainter.RenderHint.Antialiasing)
-        pintor.setPen(Qt.PenStyle.NoPen)
-        pintor.setBrush(QBrush(QColor(theme.COLOR["primary"])))
-        raio = lado * 0.22
-        pintor.drawRoundedRect(QRectF(0, 0, lado, lado), raio, raio)
-
-        glifo = max(8, int(lado * 0.56))
-        # escala=1.0 e obrigatorio aqui: o padrao segue o devicePixelRatio
-        # da tela, o que e certo para a interface e errado para um arquivo.
-        # Sem isso o mesmo comando produz um .ico diferente em cada monitor,
-        # e o build suja a arvore de trabalho a cada execucao.
-        marca = icons.pixmap(
-            "arquivo", theme.COLOR["on_primary"], glifo, escala=1.0
-        )
-        pintor.drawPixmap(
-            int((lado - marca.width()) / 2),
-            int((lado - marca.height()) / 2),
-            marca,
-        )
-        pintor.end()
-        quadros.append(imagem)
-
-    maior = quadros[-1]
+    maior = icons.marca(TAMANHOS_DO_APP[-1], escala=1.0).toImage()
     if not maior.save(str(ICONE), "ICO"):
         raise SystemExit(f"Nao foi possivel gravar {ICONE}")
     print(f"icone gerado: {ICONE}")
