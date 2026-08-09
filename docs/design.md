@@ -151,6 +151,40 @@ O teste de teclado da zona instancia `DropZone` diretamente. Pela
 o teste para sempre no modo offscreen. Abrir o dialogo e o comportamento
 certo do app; o que nao pode e a suite depender dele.
 
+### D15. O tema escuro precisou de um token novo  **[origem: execucao]**
+
+A regra original dizia: "texto sobre accent e sempre `ink`". Ela valia num
+app so claro, onde `ink` e escuro. No tema escuro `ink` vira claro, e o
+Sky Aqua continua claro, entao a regra produziria 1.77:1, reprovado.
+
+A saida foi `on_accent`, que e escuro nos dois temas. No tema claro ele
+vale exatamente o mesmo que `ink`, entao **nenhum numero da auditoria
+original mudou**: os 7.45:1 e 9.06:1 continuam iguais. O que mudou foi o
+nome do token nos pares auditados, e o teste agora roda parametrizado nas
+duas paletas.
+
+Vale registrar como divergencia do contrato: a secao 4.1 lista os pares
+com `ink`. A intencao (texto sobre accent precisa passar) esta preservada,
+o valor medido no tema claro tambem, mas o nome do token mudou.
+
+### D16. Historico nunca derruba conversao  **[origem: execucao]**
+
+O historico grava em SQLite e engole os proprios erros. Se o banco estiver
+corrompido, o disco cheio ou a pasta sem permissao, `registrar` devolve
+None e a fila segue. `recentes` devolve lista vazia.
+
+O motivo e uma ordem de prioridade explicita: converter e o produto,
+guardar o registro e conveniencia. Perder uma conversao por causa de um
+log seria trocar o essencial pelo acessorio. Ha teste para os dois casos,
+inclusive com um arquivo que nao e um banco SQLite no lugar do banco.
+
+### D17. Existe botao de apagar o historico  **[origem: execucao]**
+
+O app passa a guardar nome de arquivo do usuario, que e informacao dele.
+Quem guarda dado de alguem precisa oferecer o botao de apagar, senao
+"local" vira so uma palavra. A confirmacao deixa claro o que o botao faz e
+o que ele nao faz: apaga o registro, nao apaga os arquivos convertidos.
+
 ## 4. Divergencias encontradas entre o plano e a realidade
 
 Registradas aqui porque quem repetir este plano vai bater nas mesmas.

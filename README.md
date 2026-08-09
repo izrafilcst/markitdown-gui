@@ -120,6 +120,32 @@ Dois casos que confundem e merecem explicacao:
 Depois de corrigir o problema, clique em **tentar de novo** na propria
 linha, sem precisar arrastar o arquivo outra vez.
 
+### Conversoes recentes
+
+A aba **Recentes** guarda o que voce ja converteu, com data e hora, quanto
+texto saiu de cada arquivo e o motivo de quem falhou. Clique duas vezes
+numa linha, ou use **Abrir convertido**, para abrir o `.md` resultante.
+
+O historico e **local e so seu**: fica num banco SQLite em
+`%LOCALAPPDATA%\MarkItDown\historico.db`, nada e enviado para lugar
+nenhum. Ele guarda os ultimos 500 registros e descarta os mais antigos
+sozinho, para nao crescer no seu disco sem fim.
+
+O botao **Apagar historico** limpa a lista por completo. Ele apaga apenas
+o registro de que a conversao aconteceu; os arquivos convertidos
+continuam onde estao.
+
+### Tema claro e escuro
+
+O app **segue o tema do Windows** sozinho, sem opcao para configurar. Se o
+sistema estiver no modo escuro, ele abre escuro. Trocar o tema do Windows
+com o app aberto tambem funciona.
+
+O tema escuro nao e o claro invertido: as superficies sao um verde-azulado
+profundo da mesma familia da paleta, e o Mint Leaf continua sendo a cor de
+acao. Os mesmos 14 pares de contraste sao medidos por teste nos dois
+temas, entao a acessibilidade nao vale so no claro.
+
 ### Uso so pelo teclado
 
 A janela inteira e navegavel por Tab, com anel de foco visivel em todo
