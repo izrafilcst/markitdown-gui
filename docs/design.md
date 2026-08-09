@@ -140,11 +140,48 @@ Registradas aqui porque quem repetir este plano vai bater nas mesmas.
 | `QSignalSpy.wait` | funciona para sinal de worker | Segura o GIL, os workers Python nunca rodam. Use `QEventLoop.exec` |
 | `QDropEvent(mime)` | o evento segura o mime | Nao segura. Mime coletado vira ponteiro pendurado e derruba o processo |
 | `findChildren((A, B))` | aceita tupla de tipos | Levanta `TypeError`. Um tipo por chamada |
-| ambiente provisionado | PyInstaller instalado | Nao esta instalado |
+| ambiente provisionado | PyInstaller instalado | Nao estava. Foi instalado durante a execucao |
+| build so precisa de magika e onnxruntime | numpy sai junto | Falso. Sem `--collect-all numpy` o .exe morre no import |
 
-## 5. O que nao esta feito
+### D13. Conversao vazia avisa, em vez de calar  **[origem: execucao]**
 
-- Verificacao manual com arraste real do Explorer (Task 14 do plano).
-- Empacotamento em `.exe` (Task 15), bloqueado pela ausencia do PyInstaller.
+Encontrado ao verificar o `.exe`: um PDF sem texto extraivel, que e o caso
+do documento digitalizado, faz o `markitdown` devolver string vazia **sem
+erro**. O app gravava um `.md` de zero byte e dizia "Concluido".
+
+Para o publico deste app, que nao e tecnico, esse silencio e pior do que
+uma falha honesta: a pessoa so descobre ao abrir o arquivo, possivelmente
+depois de converter um lote inteiro. Agora o item conclui, o arquivo e
+gravado, e a linha explica que nenhum texto foi encontrado e que o arquivo
+pode ser digitalizado. O detalhe tecnico diz por que o app nao faz
+reconhecimento otico: exigiria enviar o arquivo para um servico online, o
+que a decisao D2 proibe.
+
+## 5. Verificacao do executavel
+
+O `.exe` foi construido e testado em pasta sem Python no PATH:
+
+- Primeira tentativa **quebrou**, com `No module named 'numpy._core._exceptions'`.
+  A falha aconteceu no import, antes de qualquer janela aparecer. Foi
+  corrigida com `--collect-all numpy` em `build.py`.
+- Segunda tentativa sobe limpa e sobrevive.
+- Conversao real dentro do bundle congelado foi provada com um executavel
+  de console construido com as mesmas flags: converteu `exemplo.html` em
+  Markdown correto, com `sys.frozen` verdadeiro e o PATH limpo.
+
+Tamanho final: 268 MB, quase tudo modelo do magika e runtime nativo do
+onnxruntime.
+
+## 6. O que nao esta feito
+
+- **Verificacao manual com arraste real do Explorer** (Task 14 do plano).
+  Nenhum teste automatizado substitui isso, porque o drop atravessa o
+  sistema operacional.
+- Conversao acionada pela **interface grafica do .exe**. O que foi provado
+  e que a pilha de conversao funciona congelada; ninguem arrastou um
+  arquivo para a janela do executavel.
 - Teste com leitor de tela e com o modo de alto contraste do Windows.
 - Teste de carga com 100 arquivos reais.
+- `markitdown_gui/ui/theme.py` tem 543 linhas, acima do limite de 500 do
+  `CLAUDE.md`. A maior parte e a folha de estilo. Fica registrado como
+  divida consciente, nao como descuido.

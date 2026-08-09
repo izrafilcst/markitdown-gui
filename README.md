@@ -50,6 +50,21 @@ Testes:
 Os testes de interface rodam sem abrir janela, com
 `QT_QPA_PLATFORM=offscreen`, que o `tests/conftest.py` ja define.
 
+## Gerar o executavel
+
+```
+.venv\Scripts\python.exe build.py
+```
+
+Sai em `dist/MarkItDown/MarkItDown.exe`, com cerca de 268 MB. O tamanho e
+quase todo modelo de deteccao de tipo de arquivo (`magika`) e runtime
+nativo (`onnxruntime`), que sao o preco de identificar formato sem
+consultar servico online.
+
+O `build.py` gera o icone a partir dos proprios tokens de design, entao
+nao ha arquivo de imagem vindo de fora que possa ficar dessincronizado do
+tema.
+
 ## Arquitetura
 
 Tres camadas, com dependencia em sentido unico:
