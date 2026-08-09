@@ -142,6 +142,28 @@ Testes:
 Os testes de interface rodam sem abrir janela, com
 `QT_QPA_PLATFORM=offscreen`, que o `tests/conftest.py` ja define.
 
+## Instalar
+
+Peca o arquivo `MarkItDown-Setup.zip`, extraia em qualquer lugar e rode
+`MarkItDown-Setup.exe`. O assistente pergunta onde instalar, se voce quer
+atalhos e se quer o programa no PATH. Nao pede senha de administrador,
+nao precisa de internet e nao precisa de Python.
+
+A instalacao vai por padrao para
+`%LOCALAPPDATA%\Programs\MarkItDown`, que e a pasta que o Windows reserva
+para programas de um usuario so. Depois de instalado, o MarkItDown aparece
+em Aplicativos Instalados e pode ser removido por la, como qualquer outro
+programa.
+
+Para gerar o instalador a partir do codigo:
+
+```
+.venv\Scripts\python.exe -m installer.build_setup
+```
+
+Sai em `dist/MarkItDown-Setup.zip`, com cerca de 142 MB: o assistente
+mais a carga comprimida do aplicativo.
+
 ## Gerar o executavel
 
 ```
