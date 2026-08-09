@@ -3,16 +3,26 @@
 Rodar da raiz do projeto:
     .venv\\Scripts\\python.exe -m installer.build_setup
 
-O que ele faz, em ordem:
+Ha dois caminhos, e o script escolhe sozinho.
 
-1. Garante que existe a versao em pasta do app, em `dist/MarkItDown`.
-   Ela e a carga. A versao em arquivo unico nao serve: nesta maquina ela
-   descompacta tudo e nunca abre janela, e um instalador que entrega um
-   programa quebrado e pior do que nenhum instalador.
-2. Comprime essa pasta em um zip.
-3. Embute o zip dentro de um executavel unico, junto com o assistente.
+**Com Inno Setup instalado**, que e o preferido: sai um
+`dist/MarkItDown-Setup.exe` de arquivo unico, com cerca de 83 MB, do
+mesmo tipo que aplicativo comercial usa. Instala por usuario, sem pedir
+administrador, cria atalhos, entra em Aplicativos Instalados e traz
+desinstalador que devolve tambem o PATH.
 
-O resultado e um arquivo so, que o usuario baixa, clica e instala.
+**Sem Inno Setup**: sai um instalador em pasta, feito com PyInstaller,
+mais a carga ao lado, zipados em `dist/MarkItDown-Setup.zip`. Funciona,
+mas sao dois arquivos e o zip fica maior, porque o deflate do zipfile
+comprime bem menos que o lzma2 do Inno.
+
+Nos dois casos a carga e a versao em PASTA do app, `dist/MarkItDown`. A
+versao do app em arquivo unico nao serve: nesta maquina ela descompacta
+tudo e nunca abre janela, e um instalador que entrega um programa
+quebrado e pior do que nenhum instalador.
+
+Para instalar o Inno Setup:
+    winget install --id JRSoftware.InnoSetup --exact
 """
 
 from __future__ import annotations
@@ -31,6 +41,7 @@ PACOTE = DIST / "MarkItDown-payload.zip"
 VERSAO_TXT = DIST / "versao.txt"
 PASTA_SETUP = DIST / "setup"
 ZIP_FINAL = DIST / "MarkItDown-Setup.zip"
+ISS_SAIDA = DIST
 
 
 def _versao() -> str:
@@ -139,10 +150,84 @@ def zipar_para_distribuir() -> Path:
     return ZIP_FINAL
 
 
+def achar_iscc() -> Path | None:
+    """Localiza o compilador do Inno Setup, se estiver instalado."""
+    candidatos = [
+        Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"))
+        / "Inno Setup 6" / "ISCC.exe",
+        Path(os.environ.get("ProgramFiles", r"C:\Program Files"))
+        / "Inno Setup 6" / "ISCC.exe",
+        Path(os.environ.get("LOCALAPPDATA", "")) / "Programs"
+        / "Inno Setup 6" / "ISCC.exe",
+    ]
+    for caminho in candidatos:
+        if caminho.exists():
+            return caminho
+    return None
+
+
+LIMITE_DO_WINDOWS = 260
+
+
+def limite_da_pasta_de_destino() -> int:
+    """Quantos caracteres a pasta de destino pode ter, sem estourar.
+
+    Calculado da carga real, e nao chutado: se um dia entrar uma
+    dependencia com caminho ainda mais fundo que o lxml, o instalador
+    passa a recusar destinos mais curtos automaticamente, em vez de
+    quebrar no meio da copia.
+    """
+    maior = 0
+    for caminho in APP_EM_PASTA.rglob("*"):
+        if caminho.is_file():
+            maior = max(maior, len(str(caminho.relative_to(APP_EM_PASTA))))
+    # Um caractere para a barra que separa a pasta do arquivo.
+    return LIMITE_DO_WINDOWS - maior - 1
+
+
+def empacotar_com_inno(versao: str, iscc: Path) -> int:
+    """Gera um Setup.exe unico e de verdade, com o Inno Setup.
+
+    E o mecanismo que aplicativo comercial usa. Diferente do executavel
+    unico do PyInstaller, ele nao descompacta o programa inteiro no
+    temporario para depois executar: grava direto na pasta de destino, o
+    que e justamente o passo que trava aqui.
+    """
+    ISS_SAIDA.mkdir(parents=True, exist_ok=True)
+    limite = limite_da_pasta_de_destino()
+    print(f"pasta de destino pode ter ate {limite} caracteres")
+    comando = [
+        str(iscc),
+        f"/DVersao={versao}",
+        f"/DLimitePasta={limite}",
+        f"/DCarga={APP_EM_PASTA}",
+        f"/DIcone={RAIZ / 'resources' / 'icone.ico'}",
+        f"/DSaida={ISS_SAIDA}",
+        str(RAIZ / "installer" / "markitdown.iss"),
+    ]
+    print("rodando:", " ".join(comando))
+    return subprocess.run(comando, cwd=RAIZ, check=False).returncode
+
+
 def main() -> int:
     versao = _versao()
     print(f"construindo o instalador do MarkItDown {versao}")
     garantir_app_em_pasta()
+
+    iscc = achar_iscc()
+    if iscc is not None:
+        print(f"Inno Setup encontrado: {iscc}")
+        codigo = empacotar_com_inno(versao, iscc)
+        alvo = ISS_SAIDA / "MarkItDown-Setup.exe"
+        if codigo == 0 and alvo.exists():
+            mb = alvo.stat().st_size / 1024 / 1024
+            print()
+            print(f"pronto: {alvo} ({mb:.0f} MB), um arquivo so")
+            return 0
+        print("a compilacao com Inno Setup falhou, caindo para o modo em pasta")
+    else:
+        print("Inno Setup nao encontrado, gerando o instalador em pasta")
+
     comprimir()
     codigo = empacotar_instalador(versao)
     if codigo != 0:

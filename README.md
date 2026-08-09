@@ -144,25 +144,38 @@ Os testes de interface rodam sem abrir janela, com
 
 ## Instalar
 
-Peca o arquivo `MarkItDown-Setup.zip`, extraia em qualquer lugar e rode
-`MarkItDown-Setup.exe`. O assistente pergunta onde instalar, se voce quer
-atalhos e se quer o programa no PATH. Nao pede senha de administrador,
-nao precisa de internet e nao precisa de Python.
+Rode `MarkItDown-Setup.exe`, um arquivo so, com cerca de 83 MB. O
+assistente pergunta onde instalar, se voce quer atalhos e se quer o
+programa no PATH. **Nao pede senha de administrador**, nao precisa de
+internet e nao precisa de Python.
 
-A instalacao vai por padrao para
-`%LOCALAPPDATA%\Programs\MarkItDown`, que e a pasta que o Windows reserva
-para programas de um usuario so. Depois de instalado, o MarkItDown aparece
-em Aplicativos Instalados e pode ser removido por la, como qualquer outro
-programa.
+O destino padrao e `%LOCALAPPDATA%\Programs\MarkItDown`, que e a pasta
+que o Windows reserva para programas de um usuario so. Depois de
+instalado, o MarkItDown aparece em Aplicativos Instalados e sai por la,
+como qualquer outro programa: a desinstalacao remove a pasta, os atalhos,
+o registro e tambem a entrada que tiver criado no PATH.
 
-Para gerar o instalador a partir do codigo:
+Uma limitacao vale saber: **a pasta de destino nao pode passar de 158
+caracteres.** O Windows corta caminhos em 260, e alguns arquivos internos
+deste programa ja usam mais de cem. O instalador confere isso na hora de
+escolher a pasta e explica o motivo, em vez de falhar no meio da copia.
+
+### Gerar o instalador a partir do codigo
 
 ```
 .venv\Scripts\python.exe -m installer.build_setup
 ```
 
-Sai em `dist/MarkItDown-Setup.zip`, com cerca de 142 MB: o assistente
-mais a carga comprimida do aplicativo.
+Ele usa o Inno Setup, se estiver instalado, e produz um `.exe` unico em
+`dist/MarkItDown-Setup.exe`. Para instalar o Inno Setup:
+
+```
+winget install --id JRSoftware.InnoSetup --exact
+```
+
+Sem o Inno Setup o script continua funcionando, mas cai para um instalador
+em pasta, entregue como `dist/MarkItDown-Setup.zip`. Funciona igual, so
+que sao dois arquivos e o resultado fica bem maior, em torno de 142 MB.
 
 ## Gerar o executavel
 
