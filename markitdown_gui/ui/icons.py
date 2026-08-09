@@ -135,11 +135,22 @@ def _escala() -> float:
     return 1.0
 
 
-def pixmap(nome: str, cor: str | None = None, tamanho: int = 20) -> "QPixmap":
+def pixmap(
+    nome: str,
+    cor: str | None = None,
+    tamanho: int = 20,
+    escala: float | None = None,
+) -> "QPixmap":
     """Icone rasterizado no tamanho pedido, com fundo transparente.
 
     Nome fora do conjunto levanta KeyError de proposito: um icone faltando
     precisa aparecer como erro, nao como quadrado vazio na interface.
+
+    `escala` normalmente fica em None, e ai o fator vem da tela, que e o
+    certo para nao sair borrado em monitor HiDPI. Quem esta gerando
+    ARQUIVO, e nao pixel de tela, precisa passar 1.0: um `.ico` quer
+    pixels exatos, e deixar a tela decidir faria o mesmo comando produzir
+    bytes diferentes em cada maquina.
     """
     if nome not in _TRACOS:
         raise KeyError(
@@ -149,7 +160,8 @@ def pixmap(nome: str, cor: str | None = None, tamanho: int = 20) -> "QPixmap":
     if cor is None:
         cor = theme.COLOR["ink"]
 
-    escala = _escala()
+    if escala is None:
+        escala = _escala()
     chave = (nome, cor, tamanho, escala)
     em_cache = _CACHE.get(chave)
     if em_cache is not None:

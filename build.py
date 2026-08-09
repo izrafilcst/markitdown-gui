@@ -65,7 +65,13 @@ def gerar_icone() -> Path:
         pintor.drawRoundedRect(QRectF(0, 0, lado, lado), raio, raio)
 
         glifo = max(8, int(lado * 0.56))
-        marca = icons.pixmap("arquivo", theme.COLOR["on_primary"], glifo)
+        # escala=1.0 e obrigatorio aqui: o padrao segue o devicePixelRatio
+        # da tela, o que e certo para a interface e errado para um arquivo.
+        # Sem isso o mesmo comando produz um .ico diferente em cada monitor,
+        # e o build suja a arvore de trabalho a cada execucao.
+        marca = icons.pixmap(
+            "arquivo", theme.COLOR["on_primary"], glifo, escala=1.0
+        )
         pintor.drawPixmap(
             int((lado - marca.width()) / 2),
             int((lado - marca.height()) / 2),
