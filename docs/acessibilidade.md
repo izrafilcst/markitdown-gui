@@ -102,12 +102,27 @@ final e aplicado direto, sem animar. A consulta e defensiva porque o Qt
 nao expoe essa preferencia de forma estavel entre versoes: se a versao
 instalada nao souber responder, o padrao e animar.
 
-## 6. O que ainda nao foi verificado
+## 6. Navegacao por teclado, verificada por teste
+
+`tests/test_roteiro.py` percorre a cadeia de foco da janela real com
+`focusNextChild`, comeca na zona de arraste e da a volta completa. Ele
+coleta todos os botoes visiveis e habilitados e falha nomeando qualquer um
+que o Tab nao alcance. Com um item na fila, a cobertura inclui os botoes
+da linha, que sao os que aparecem e somem conforme o estado.
+
+Dois testes cuidam do lado visual e do acionamento:
+
+- a folha de estilo precisa definir estado `:focus` e usar o token `focus`;
+- a zona de arraste precisa responder a Enter, Return e Espaco, para que
+  quem chega nela por Tab consiga abrir o seletor de arquivos sem mouse.
+
+## 7. O que ainda nao foi verificado
 
 Honestidade sobre o limite desta auditoria:
 
-- **Navegacao completa por Tab com foco visivel** ainda nao foi percorrida
-  com a janela aberta de verdade. Esta no roteiro da Task 14.
+- **Foco visivel de fato.** O teste garante que o QSS define o estado e usa
+  o token auditado, mas ninguem olhou para a tela para confirmar que o anel
+  aparece onde deveria.
 - **Leitor de tela real** (Narrator ou NVDA) nao foi testado. Os
   `accessibleName` existem e sao verificados por teste, mas ninguem
   escutou o resultado.

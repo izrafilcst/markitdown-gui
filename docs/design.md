@@ -130,19 +130,6 @@ No Windows ele as vezes falha em silencio para caminhos com acento, e
 falha silenciosa e o pior resultado possivel para um botao que o usuario
 acabou de clicar. O app usa `os.startfile` e reporta erro quando ocorre.
 
-## 4. Divergencias encontradas entre o plano e a realidade
-
-Registradas aqui porque quem repetir este plano vai bater nas mesmas.
-
-| Item | O que o plano assume | O que a maquina faz |
-|---|---|---|
-| `len(spy)`, `spy[0]` | `QSignalSpy` e sequencia | Levanta `TypeError`. Use `count()` e `at()` |
-| `QSignalSpy.wait` | funciona para sinal de worker | Segura o GIL, os workers Python nunca rodam. Use `QEventLoop.exec` |
-| `QDropEvent(mime)` | o evento segura o mime | Nao segura. Mime coletado vira ponteiro pendurado e derruba o processo |
-| `findChildren((A, B))` | aceita tupla de tipos | Levanta `TypeError`. Um tipo por chamada |
-| ambiente provisionado | PyInstaller instalado | Nao estava. Foi instalado durante a execucao |
-| build so precisa de magika e onnxruntime | numpy sai junto | Falso. Sem `--collect-all numpy` o .exe morre no import |
-
 ### D13. Conversao vazia avisa, em vez de calar  **[origem: execucao]**
 
 Encontrado ao verificar o `.exe`: um PDF sem texto extraivel, que e o caso
@@ -156,6 +143,26 @@ gravado, e a linha explica que nenhum texto foi encontrado e que o arquivo
 pode ser digitalizado. O detalhe tecnico diz por que o app nao faz
 reconhecimento otico: exigiria enviar o arquivo para um servico online, o
 que a decisao D2 proibe.
+
+### D14. Testar a zona de arraste solta, nao pela janela  **[origem: execucao]**
+
+O teste de teclado da zona instancia `DropZone` diretamente. Pela
+`MainWindow`, o sinal `clicada` abre o `QFileDialog`, que e modal e trava
+o teste para sempre no modo offscreen. Abrir o dialogo e o comportamento
+certo do app; o que nao pode e a suite depender dele.
+
+## 4. Divergencias encontradas entre o plano e a realidade
+
+Registradas aqui porque quem repetir este plano vai bater nas mesmas.
+
+| Item | O que o plano assume | O que a maquina faz |
+|---|---|---|
+| `len(spy)`, `spy[0]` | `QSignalSpy` e sequencia | Levanta `TypeError`. Use `count()` e `at()` |
+| `QSignalSpy.wait` | funciona para sinal de worker | Segura o GIL, os workers Python nunca rodam. Use `QEventLoop.exec` |
+| `QDropEvent(mime)` | o evento segura o mime | Nao segura. Mime coletado vira ponteiro pendurado e derruba o processo |
+| `findChildren((A, B))` | aceita tupla de tipos | Levanta `TypeError`. Um tipo por chamada |
+| ambiente provisionado | PyInstaller instalado | Nao estava. Foi instalado durante a execucao |
+| build so precisa de magika e onnxruntime | numpy sai junto | Falso. Sem `--collect-all numpy` o .exe morre no import |
 
 ## 5. Verificacao do executavel
 
@@ -172,16 +179,35 @@ O `.exe` foi construido e testado em pasta sem Python no PATH:
 Tamanho final: 268 MB, quase tudo modelo do magika e runtime nativo do
 onnxruntime.
 
-## 6. O que nao esta feito
+## 6. O roteiro de verificacao, automatizado ate onde da
 
-- **Verificacao manual com arraste real do Explorer** (Task 14 do plano).
-  Nenhum teste automatizado substitui isso, porque o drop atravessa o
-  sistema operacional.
+`tests/test_roteiro.py` cobre onze dos itens do roteiro do Task 14, com
+arquivos binarios de verdade: PDF com texto extraivel, DOCX com acento,
+PDF sem texto (o caso do digitalizado), PDF corrompido e PNG. Os quatro
+primeiros sao gerados por `tests/fixtures/gerar_formatos.py`, escritos na
+mao, porque o projeto nao depende de gerador de PDF nem de DOCX e nao faz
+sentido adicionar dependencia so para produzir fixture.
+
+O que ele verifica: tres formatos entram na fila, pasta com subpastas
+entra inteira, PNG e recusado com motivo visivel, conversao gera os `.md`
+certos com o texto certo, falha mostra mensagem sem jargao, PDF
+digitalizado avisa, repetir devolve o item para pendente, pausar segura o
+lote de 20, reordenar chega ao controller, Tab alcanca todos os controles,
+fechar durante conversao nao deixa worker solto, e a pasta de destino
+sobrevive ao fechar e reabrir.
+
+## 7. O que nao esta feito
+
+- **Arraste real vindo do Explorer.** Os testes injetam `QDropEvent`, o
+  que prova o tratamento do evento, nao a travessia do sistema
+  operacional. Continua sendo trabalho humano.
 - Conversao acionada pela **interface grafica do .exe**. O que foi provado
   e que a pilha de conversao funciona congelada; ninguem arrastou um
   arquivo para a janela do executavel.
-- Teste com leitor de tela e com o modo de alto contraste do Windows.
-- Teste de carga com 100 arquivos reais.
+- **Foco visivel de fato**: o teste confirma que o QSS define o estado de
+  foco e usa o token certo, mas ninguem olhou para a tela.
+- Leitor de tela e modo de alto contraste do Windows.
+- Teste de carga com 100 arquivos reais. O maior lote testado tem 20.
 - `markitdown_gui/ui/theme.py` tem 543 linhas, acima do limite de 500 do
   `CLAUDE.md`. A maior parte e a folha de estilo. Fica registrado como
   divida consciente, nao como descuido.
