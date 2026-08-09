@@ -87,13 +87,37 @@ def gerar_icone() -> Path:
     return ICONE
 
 
-def empacotar() -> int:
+def empacotar(arquivo_unico: bool = False) -> int:
+    """Empacota em pasta (padrao) ou em um executavel unico.
+
+    A diferenca importa para quem vai receber o programa:
+
+    Pasta (`onedir`): sai `dist/MarkItDown/`, com o .exe e a pasta
+    `_internal` ao lado. Abre rapido, porque nada e descompactado. O .exe
+    NAO funciona sozinho, entao a pasta inteira precisa ser distribuida.
+
+    Arquivo unico (`onefile`): sai `dist/MarkItDown.exe`, um arquivo so.
+    ATENCAO, medido nesta maquina: ele NAO ABRE. A descompactacao para no
+    meio, em torno de 140 MB, a CPU fica parada e o processo segue vivo sem
+    nunca mostrar janela, mesmo depois de quatro minutos. O mesmo acontece
+    com o instalador quando empacotado assim. Um onefile pequeno, de 8 MB,
+    abre instantaneamente, entao o gatilho parece ser o volume gravado no
+    temporario, provavelmente barrado pela protecao em tempo real.
+
+    O modo esta aqui para quem quiser testar em outra maquina, e nao como
+    caminho de distribuicao. Enquanto isso nao for resolvido, o que se
+    entrega e a pasta, ou o instalador que a instala.
+    """
     icone = gerar_icone()
 
-    for pasta in ("build", "dist"):
-        alvo = RAIZ / pasta
-        if alvo.exists():
+    alvos = [RAIZ / "build"]
+    alvos.append(RAIZ / "dist" / "MarkItDown.exe" if arquivo_unico
+                 else RAIZ / "dist" / "MarkItDown")
+    for alvo in alvos:
+        if alvo.is_dir():
             shutil.rmtree(alvo)
+        elif alvo.exists():
+            alvo.unlink()
 
     comando = [
         sys.executable,
@@ -101,6 +125,7 @@ def empacotar() -> int:
         "PyInstaller",
         "--noconfirm",
         "--windowed",
+        "--onefile" if arquivo_unico else "--onedir",
         "--name",
         "MarkItDown",
         "--collect-data",
@@ -111,11 +136,24 @@ def empacotar() -> int:
         "numpy",
         "--icon",
         str(icone),
-        str(RAIZ / "main.py"),
     ]
+    if arquivo_unico:
+        # O .spec do modo pasta e versionado. Mandar o do modo arquivo
+        # unico para build/ evita sobrescrever um com o outro.
+        comando += ["--specpath", str(RAIZ / "build")]
+    comando.append(str(RAIZ / "main.py"))
+
     print("rodando:", " ".join(comando))
-    return subprocess.run(comando, cwd=RAIZ, check=False).returncode
+    codigo = subprocess.run(comando, cwd=RAIZ, check=False).returncode
+    if codigo == 0:
+        saida = (
+            RAIZ / "dist" / "MarkItDown.exe" if arquivo_unico
+            else RAIZ / "dist" / "MarkItDown"
+        )
+        print(f"pronto: {saida}")
+    return codigo
 
 
 if __name__ == "__main__":
-    raise SystemExit(empacotar())
+    unico = "--onefile" in sys.argv or "--arquivo-unico" in sys.argv
+    raise SystemExit(empacotar(arquivo_unico=unico))
