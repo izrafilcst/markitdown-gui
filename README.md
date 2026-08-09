@@ -218,6 +218,91 @@ O `build.py` gera o icone a partir dos proprios tokens de design, entao
 nao ha arquivo de imagem vindo de fora que possa ficar dessincronizado do
 tema.
 
+## Estrutura do repositorio
+
+```
+markitdown_gui/      o aplicativo
+  core/              Python puro, sem Qt. E o que da para testar sem janela
+  jobs/              orquestracao da fila, ponte entre o core e a interface
+  ui/                tudo que desenha
+  resources/fonts/   fontes embarcadas, opcionais
+
+installer/           o instalador, com a mesma separacao em camadas
+tests/               a suite, um arquivo por modulo
+docs/                decisoes, auditoria de acessibilidade e planos
+resources/           o icone do executavel, gerado por build.py
+```
+
+### `markitdown_gui/core/`, Python puro
+
+Nao importa Qt, e isso e verificado por teste. E o que torna a logica
+testavel em segundos, sem abrir janela.
+
+| Arquivo | O que resolve |
+|---|---|
+| `formats.py` | quais extensoes entram, e o motivo em portugues das que nao entram. Fonte unica: nao existe segunda lista em lugar nenhum |
+| `naming.py` | `livro.pdf` vira `livro_convertido.md`, e resolve colisao com ` (2)`, inclusive entre dois arquivos da mesma fila |
+| `discovery.py` | expande pastas recursivamente, remove duplicata, ignora pasta oculta e aplica o teto de 500 arquivos |
+| `converter.py` | camada fina sobre a biblioteca `markitdown`. Uma instancia por thread, a trava de privacidade, e a traducao de excecao tecnica para frase que um humano entende |
+| `historico.py` | o registro local das conversoes, em SQLite. Engole os proprios erros de proposito: historico nao pode derrubar conversao |
+
+### `markitdown_gui/jobs/`, a fila
+
+Conhece Qt e conhece o core. O core nao conhece nenhum dos dois.
+
+| Arquivo | O que resolve |
+|---|---|
+| `models.py` | o que e um item da fila e quais estados ele tem. Sem Qt |
+| `worker.py` | a unidade de trabalho que roda fora da thread da interface |
+| `controller.py` | o cerebro da fila. Despacha ate 4 conversoes, e **escolhe o nome de saida na thread da interface**, que e o que elimina a corrida entre workers |
+
+O pacote se chama `jobs` e nao `queue` de proposito: `queue` e um modulo
+da biblioteca padrao, e sombrear ele quebra o empacotamento.
+
+### `markitdown_gui/ui/`, a interface
+
+Só desenha e conecta sinais. Nenhuma regra de negocio, e nenhuma cor
+literal fora do `theme.py`, verificado por teste.
+
+| Arquivo | O que resolve |
+|---|---|
+| `theme.py` | **a unica fonte de cor do projeto**. As duas paletas, clara e escura, os tokens de espaco e tipografia, e a folha de estilo inteira |
+| `icons.py` | os icones em SVG, escritos no proprio modulo, recoloridos em tempo de execucao. Tambem desenha a marca do app |
+| `drop_zone.py` | a area de arraste, grande quando a fila esta vazia e faixa fina quando ha itens |
+| `destino_bar.py` | a barra de destino, que tambem aceita pasta solta |
+| `queue_row.py` | uma linha da fila, com icone, texto e cor para cada estado |
+| `queue_view.py` | a lista, que reordena por arraste e recebe arquivos de fora |
+| `history_view.py` | a aba de conversoes recentes |
+| `prefs.py` | a pasta de destino e a geometria da janela, via QSettings |
+| `main_window.py` | o integrador. Monta as abas e liga sinal em slot |
+
+### `installer/`
+
+Mesma separacao em camadas, pelo mesmo motivo: o que mexe no computador
+de quem instala precisa ser testavel.
+
+| Arquivo | O que resolve |
+|---|---|
+| `nucleo.py` | logica pura: PATH sem duplicar, destino seguro, verificacao de integridade, caminho longo do Windows. E o que tem teste |
+| `windows.py` | as chamadas que mexem de verdade no sistema: registro, atalhos, PATH |
+| `setup_app.py` | o assistente em tkinter, usado so quando nao ha Inno Setup |
+| `markitdown.iss` | o script do Inno Setup, que gera o `Setup.exe` de arquivo unico |
+| `build_setup.py` | monta tudo, e **detecta build obsoleto** para nao empacotar codigo velho |
+
+### Raiz
+
+| Arquivo | O que resolve |
+|---|---|
+| `main.py` | ponto de entrada do app |
+| `build.py` | empacota o app com PyInstaller e gera o icone |
+| `MarkItDown.spec` | receita do PyInstaller, gerada e versionada |
+| `pyproject.toml` | metadados e configuracao do pytest |
+| `requirements.txt` | as duas dependencias de execucao |
+| `requirements-dev.txt` | pytest e PyInstaller |
+
+Nao versionados, porque sao gerados: `dist/`, `build/`, `.venv/` e
+`tests/fixtures/formatos/`.
+
 ## Arquitetura
 
 Tres camadas, com dependencia em sentido unico:
