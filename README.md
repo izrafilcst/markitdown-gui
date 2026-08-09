@@ -295,13 +295,13 @@ de quem instala precisa ser testavel.
 |---|---|
 | `main.py` | ponto de entrada do app |
 | `build.py` | empacota o app com PyInstaller e gera o icone |
-| `MarkItDown.spec` | receita do PyInstaller, gerada e versionada |
 | `pyproject.toml` | metadados e configuracao do pytest |
 | `requirements.txt` | as duas dependencias de execucao |
 | `requirements-dev.txt` | pytest e PyInstaller |
 
-Nao versionados, porque sao gerados: `dist/`, `build/`, `.venv/` e
-`tests/fixtures/formatos/`.
+Nao versionados, porque sao gerados: `dist/`, `build/`, `.venv/`,
+`tests/fixtures/formatos/` e os `.spec` do PyInstaller, que carregam
+caminhos absolutos da maquina de quem construiu.
 
 ## Arquitetura
 

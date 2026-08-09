@@ -24,3 +24,11 @@ ruvector.db
 
 # Fixtures binarias sao geradas por tests/fixtures/gerar_formatos.py
 tests/fixtures/formatos/
+
+# Receita do PyInstaller: e regenerada a cada build e carrega caminhos
+# absolutos da maquina de quem construiu, inclusive o nome de usuario.
+*.spec
+
+# Ferramentas de agente, locais e sem valor no repositorio
+.claude/
+.agents/
