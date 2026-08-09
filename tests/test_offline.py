@@ -1,4 +1,5 @@
 import socket
+import threading
 from pathlib import Path
 
 import pytest
@@ -67,3 +68,36 @@ def test_core_nao_importa_qt():
         or "import PySide6" in py.read_text(encoding="utf-8")
     ]
     assert ofensores == [], f"Qt vazou para o core em: {ofensores}"
+
+
+def test_plugins_de_terceiro_ficam_desligados(monkeypatch):
+    """A trava de privacidade e verificada, nao so comentada.
+
+    enable_plugins=False nao e otimizacao: um plugin de terceiro instalado
+    no sistema roda dentro do processo e pode fazer chamada de rede, o que
+    quebraria a promessa central do app. O bloqueio de socket dos testes
+    acima nao pega isso sozinho, porque nenhuma maquina de teste tem
+    plugin instalado, entao ligar a flag passaria despercebido.
+    """
+    capturado = {}
+
+    class MarkItDownEspiao:
+        def __init__(self, *args, **kwargs):
+            capturado.update(kwargs)
+
+        def convert(self, caminho):
+            class R:
+                markdown = "conteudo"
+
+            return R()
+
+    monkeypatch.setattr(converter, "MarkItDown", MarkItDownEspiao)
+    # A engine e memorizada por thread: sem limpar, o espiao nunca e usado.
+    monkeypatch.setattr(converter, "_local", threading.local())
+
+    converter.converter(FIXTURES / "exemplo.csv")
+
+    assert capturado.get("enable_plugins") is False, (
+        "A engine foi criada sem desligar plugins de terceiro. "
+        f"Argumentos recebidos: {capturado}"
+    )

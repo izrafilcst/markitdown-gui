@@ -102,6 +102,36 @@ def test_reordenar_emite_ordem_nova(qapp):
     assert lista.ordem_atual() == [itens[1].id, itens[2].id, itens[0].id]
 
 
+def test_drop_interno_anuncia_a_ordem(qapp):
+    """O caminho real da reordenacao: dropEvent sem URL e movimento interno.
+
+    O teste acima cobra o resultado da reordenacao chamando anunciar_ordem
+    direto, o que nao exercita o dropEvent. Este cobra o gatilho: um drop
+    que nao traz URL veio de dentro da propria lista, e a lista precisa
+    anunciar a ordem resultante sozinha. Sem este teste, apagar a chamada
+    de anunciar_ordem dentro do dropEvent passa despercebido.
+    """
+    lista = ListaDaFila()
+    itens = _itens("a.pdf", "b.docx", "c.csv")
+    lista.adicionar(itens)
+
+    mime = QMimeData()
+    mime.setData("application/x-qabstractitemmodeldatalist", b"")
+    evento = QDropEvent(
+        QPointF(10, 10),
+        Qt.DropAction.MoveAction,
+        mime,
+        Qt.MouseButton.LeftButton,
+        Qt.KeyboardModifier.NoModifier,
+    )
+
+    spy = QSignalSpy(lista.ordem_alterada)
+    lista.dropEvent(evento)
+
+    assert spy.count() == 1
+    assert spy.at(0)[0] == lista.ordem_atual()
+
+
 def test_arquivo_solto_na_lista_emite(qapp, pasta):
     arquivo = pasta / "solto.pdf"
     arquivo.write_text("x", encoding="utf-8")
