@@ -43,7 +43,11 @@ VersionInfoVersion={#Versao}
 ; Instala para o usuario atual. Sem elevacao, sem caixa de permissao.
 ; Converter um PDF nao deveria exigir senha de administrador.
 PrivilegesRequired=lowest
-PrivilegesRequiredOverridesAllowed=dialog
+; Sem PrivilegesRequiredOverridesAllowed de proposito. Com ele, o Inno
+; abre antes do assistente uma caixa perguntando "instalar para todos os
+; usuarios ou so para mim". Para o publico deste app essa pergunta e ruido:
+; ele nao tem como avaliar a diferenca, a opcao "todos" pediria senha de
+; administrador, e a resposta certa e sempre a mesma. Instala por usuario.
 DefaultDirName={autopf}\{#Nome}
 DefaultGroupName={#Nome}
 DisableProgramGroupPage=yes
