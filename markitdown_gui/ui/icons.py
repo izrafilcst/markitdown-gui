@@ -135,6 +135,17 @@ def _escala() -> float:
     return 1.0
 
 
+def limpar_cache() -> None:
+    """Esvazia o cache de icones ja rasterizados.
+
+    Chamado por theme.definir_tema. Sem isso, trocar para o tema
+    escuro deixaria na tela os icones desenhados com as cores do
+    tema claro, porque a chave do cache guarda a cor pedida e nao
+    sabe que a paleta inteira mudou de significado.
+    """
+    _CACHE.clear()
+
+
 def pixmap(
     nome: str,
     cor: str | None = None,

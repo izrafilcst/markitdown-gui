@@ -208,3 +208,61 @@ def test_conversao_normal_nao_ganha_mensagem(app, entradas, pasta):
     assert all(i.caracteres > 0 for i in c.itens)
     assert all(i.mensagem == "" for i in c.itens)
     c.encerrar()
+
+
+def test_conversao_entra_no_historico(app, entradas, pasta):
+    """O historico e alimentado pelo controller, que e quem sabe o desfecho."""
+    from markitdown_gui.core.historico import Historico
+
+    livro = Historico(pasta / "historico.db")
+    destino = pasta / "saida"
+    c = FilaController(historico=livro)
+    c.definir_destino(destino)
+    c.adicionar([entradas])
+
+    espera = EsperaOcioso(c)
+    c.iniciar()
+    assert espera.esperar(30000)
+
+    registros = livro.recentes()
+    assert len(registros) == 3
+    assert all(r.sucesso for r in registros)
+    assert sorted(r.origem.name for r in registros) == ["a.csv", "b.csv", "c.csv"]
+    assert all(r.caracteres > 0 for r in registros)
+    c.encerrar()
+
+
+def test_falha_tambem_entra_no_historico(app, pasta):
+    from markitdown_gui.core.historico import Historico
+
+    origem = pasta / "entrada"
+    origem.mkdir()
+    (origem / "ruim.pdf").write_bytes(b"%PDF-1.4\n" + b"\x00\xff" * 300)
+
+    livro = Historico(pasta / "historico.db")
+    c = FilaController(historico=livro)
+    c.definir_destino(pasta / "saida")
+    c.adicionar([origem])
+
+    espera = EsperaOcioso(c)
+    c.iniciar()
+    assert espera.esperar(30000)
+
+    (r,) = livro.recentes()
+    assert r.sucesso is False
+    assert r.mensagem
+    c.encerrar()
+
+
+def test_sem_historico_o_controller_funciona_igual(app, entradas, pasta):
+    """O historico e opcional: passar None nao pode mudar nada."""
+    destino = pasta / "saida"
+    c = FilaController()
+    c.definir_destino(destino)
+    c.adicionar([entradas])
+
+    espera = EsperaOcioso(c)
+    c.iniciar()
+    assert espera.esperar(30000)
+    assert len(sorted(destino.glob("*.md"))) == 3
+    c.encerrar()

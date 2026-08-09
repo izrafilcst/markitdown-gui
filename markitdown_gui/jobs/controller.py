@@ -40,8 +40,21 @@ class FilaController(QObject):
     aviso = Signal(str, str)              # nivel ("info"|"alerta"), texto
     destino_alterado = Signal(object)     # Path
 
-    def __init__(self, parent: QObject | None = None) -> None:
+    def __init__(
+        self,
+        parent: QObject | None = None,
+        historico=None,
+    ) -> None:
+        """`historico` e opcional e adicao ao contrato 4.4, nao alteracao.
+
+        Sem ele, o controller se comporta exatamente como antes. Com ele,
+        cada conversao terminada vira um registro. Quem grava e o
+        controller porque e ele quem sabe o desfecho de cada item, e
+        porque assim a interface nao precisa adivinhar quando um item
+        chegou ao fim.
+        """
         super().__init__(parent)
+        self._historico = historico
         self._itens: list[Item] = []
         self._indice: dict[str, Item] = {}
         self._destino: Path | None = None
@@ -302,9 +315,31 @@ class FilaController(QObject):
             else:
                 item.mensagem = ""
                 item.detalhe = ""
+            self._anotar(item)
             self.item_alterado.emit(item_id)
         self._emitir_progresso()
         self._despachar()
+
+    def _anotar(self, item: Item) -> None:
+        """Registra o desfecho no historico, se houver historico.
+
+        Envolvido em try porque o historico e conveniencia e a conversao e
+        o produto: um banco corrompido nao pode parar a fila. O modulo de
+        historico ja engole os proprios erros, e este segundo cinto existe
+        para o caso de alguem passar um objeto que nao e um Historico.
+        """
+        if self._historico is None:
+            return
+        try:
+            self._historico.registrar(
+                origem=item.origem,
+                destino=item.destino if item.destino is not None else Path(),
+                caracteres=item.caracteres,
+                sucesso=item.estado is Estado.CONCLUIDO,
+                mensagem=item.mensagem,
+            )
+        except Exception:
+            pass
 
     @Slot(str, str, str)
     def _ao_falhar(self, item_id: str, mensagem: str, detalhe: str) -> None:
@@ -319,6 +354,7 @@ class FilaController(QObject):
             if item.destino is not None:
                 self._reservados.discard(item.destino)
                 item.destino = None
+            self._anotar(item)
             self.item_alterado.emit(item_id)
         self._emitir_progresso()
         self._despachar()

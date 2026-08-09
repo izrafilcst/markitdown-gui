@@ -7,6 +7,6 @@ qualquer mencao ao pacote de Qt. Por isso o nome dele nao aparece escrito
 nesta docstring: a varredura acusaria este proprio arquivo.
 """
 
-from . import converter, discovery, formats, naming
+from . import converter, discovery, formats, historico, naming
 
-__all__ = ["converter", "discovery", "formats", "naming"]
+__all__ = ["converter", "discovery", "formats", "historico", "naming"]

@@ -12,7 +12,10 @@ def main() -> int:
     app = QApplication(sys.argv)
     app.setApplicationName(APP_NAME)
     app.setOrganizationName(ORG_NAME)
+
+    # Sem argumento, aplicar segue o tema claro ou escuro do Windows.
     theme.aplicar(app)
+    theme.seguir_o_sistema(app)
 
     janela = MainWindow()
     janela.show()

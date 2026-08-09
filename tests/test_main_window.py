@@ -196,3 +196,61 @@ def test_conversao_ponta_a_ponta_pela_janela(qapp, pasta):
     assert gerados == ["dois_convertido.md", "um_convertido.md"]
     assert all(i.estado is Estado.CONCLUIDO for i in janela.controller.itens)
     janela.controller.encerrar()
+
+
+def test_janela_tem_as_duas_abas(qapp):
+    janela = MainWindow()
+    assert janela.abas is not None
+    assert janela.abas.count() == 2
+    titulos = [janela.abas.tabText(i) for i in range(janela.abas.count())]
+    assert titulos[0].lower().startswith("fila")
+    assert "recente" in titulos[1].lower()
+
+
+def test_comeca_na_aba_da_fila(qapp):
+    """Quem abre o app quer converter, nao consultar historico."""
+    assert MainWindow().abas.currentIndex() == 0
+
+
+def test_conversao_aparece_no_historico(qapp, pasta):
+    from PySide6.QtCore import QEventLoop, QTimer
+
+    origem = pasta / "entrada"
+    origem.mkdir()
+    (origem / "documento.csv").write_text("a,b\n1,2\n", encoding="utf-8")
+    destino = pasta / "saida"
+
+    janela = MainWindow(historico_em=pasta / "historico.db")
+    janela.barra_destino.destino_escolhido.emit(destino)
+    janela.controller.adicionar([origem])
+    qapp.processEvents()
+
+    loop = QEventLoop()
+    janela.controller.ocioso.connect(loop.quit)
+    QTimer.singleShot(30000, loop.quit)
+    janela.botao_converter.click()
+    loop.exec()
+
+    janela.aba_recentes.atualizar()
+    assert janela.aba_recentes.quantidade_exibida() == 1
+    assert janela.aba_recentes.nomes_exibidos() == ["documento.csv"]
+    janela.controller.encerrar()
+
+
+def test_trocar_para_a_aba_de_recentes_recarrega(qapp, pasta):
+    """O historico e recarregado ao entrar na aba, nao so na abertura."""
+    from markitdown_gui.core.historico import Historico
+
+    banco = pasta / "historico.db"
+    janela = MainWindow(historico_em=banco)
+    assert janela.aba_recentes.quantidade_exibida() == 0
+
+    Historico(banco).registrar(
+        origem=pasta / "veio_de_fora.pdf",
+        destino=pasta / "veio_de_fora_convertido.md",
+        caracteres=10,
+        sucesso=True,
+    )
+    janela.abas.setCurrentIndex(1)
+    qapp.processEvents()
+    assert janela.aba_recentes.quantidade_exibida() == 1

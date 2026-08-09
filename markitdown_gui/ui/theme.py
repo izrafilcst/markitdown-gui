@@ -22,7 +22,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from PySide6.QtWidgets import QApplication
 
 
-COLOR = {
+PALETA_CLARA = {
     # superficies
     "bg":            "#FFFBFA",  # Snow, fundo da janela
     "surface":       "#FFFFFF",  # cartoes e linhas da fila
@@ -45,6 +45,7 @@ COLOR = {
     "accent":       "#49C6E5",  # Sky Aqua
     "accent_light": "#54DEFD",
     "accent_soft":  "#8BD7D2",  # Pearl Aqua
+    "on_accent":    "#0B2B33",  # Ink. Texto sobre accent, escuro nos dois temas.
 
     # foco: Sky Aqua puro falha (1.95:1), entao usa-se a versao profunda
     "focus": "#0E6A80",  # 6.02:1
@@ -54,6 +55,64 @@ COLOR = {
     "warning":      "#F5B301",  "warning_text": "#A15C00",  # 5.05:1
     "danger":       "#E5533D",  "danger_text":  "#B3261E",  # 6.36:1
 }
+
+# Tema escuro, na mesma familia de matiz da paleta do cliente.
+#
+# Nao e o tema claro invertido. Inverter luminancia produz cinza sujo e
+# perde a identidade, entao as superficies aqui sao um verde-azulado
+# profundo, e o Mint Leaf continua sendo a cor de acao, que e o que o
+# usuario reconhece como sendo este app.
+#
+# Duas coisas mudam de papel e ambas por medicao, nao por gosto:
+#
+#   `ink` vira CLARO, porque escreve sobre superficie escura.
+#   `on_accent` e `on_primary` continuam ESCUROS, porque Sky Aqua e Mint
+#   Leaf seguem sendo cores claras: texto claro sobre elas daria 1.77:1.
+#
+# Todos os pares de PARES_AUDITADOS passam aqui tambem, e o teste roda
+# parametrizado nos dois temas justamente para isso nao se perder.
+PALETA_ESCURA = {
+    # superficies
+    "bg":            "#0E1A1D",  # fundo da janela
+    "surface":       "#152528",  # cartoes e linhas da fila
+    "surface_alt":   "#1C3236",  # hover de linha, zona de arraste em repouso
+    "border":        "#26454A",  # divisorias decorativas
+    "border_strong": "#3E7B82",  # borda da zona de arraste
+
+    # tinta (todas medidas sobre o bg escuro)
+    "ink":       "#E6F4F3",  # 15.71:1  titulo e texto principal
+    "ink_soft":  "#B6CFD1",  # 10.84:1  texto secundario
+    "ink_mute":  "#8FA9AD",  #  7.13:1  piso, nao escurecer mais
+
+    # acao
+    "primary":       "#00BD9D",  # Mint Leaf, o mesmo do tema claro
+    "primary_hover": "#22CFB0",  # no escuro, hover clareia
+    "primary_press": "#00A88C",
+    "on_primary":    "#06211F",  # 7.04:1. NUNCA claro sobre Mint Leaf.
+
+    # acento, apenas preenchimento e nunca texto
+    "accent":       "#49C6E5",
+    "accent_light": "#54DEFD",
+    "accent_soft":  "#8BD7D2",
+    "on_accent":    "#06211F",  # 8.43:1
+
+    # foco: no escuro o anel precisa ser claro para ser visto
+    "focus": "#7BD5EA",  # 10.60:1
+
+    # estados
+    "success":      "#00BD9D",  "success_text": "#4FD9BC",  # 10.12:1
+    "warning":      "#F5B301",  "warning_text": "#F0B429",  #  9.51:1
+    "danger":       "#E5533D",  "danger_text":  "#FF9382",  #  8.23:1
+}
+
+PALETAS = {"claro": PALETA_CLARA, "escuro": PALETA_ESCURA}
+
+# A paleta ativa. E um dicionario mutado no lugar por `definir_tema`, e
+# nunca substituido: todo modulo de interface faz `from . import theme` e
+# le `theme.COLOR`, entao trocar a referencia deixaria quem ja guardou o
+# dicionario antigo pintando com as cores do tema anterior.
+COLOR: dict[str, str] = dict(PALETA_CLARA)
+_TEMA_ATUAL = "claro"
 
 SPACE  = {"xs": 4, "sm": 8, "md": 12, "lg": 16, "xl": 24, "2xl": 32}
 RADIUS = {"sm": 6, "md": 10, "lg": 14, "pill": 999}
@@ -75,8 +134,8 @@ PARES_AUDITADOS = [
     ("on_primary",   "primary",       4.5),
     ("on_primary",   "primary_hover", 4.5),
     ("on_primary",   "primary_press", 4.5),
-    ("ink",          "accent",      4.5),
-    ("ink",          "accent_soft", 4.5),
+    ("on_accent",    "accent",      4.5),
+    ("on_accent",    "accent_soft", 4.5),
     ("success_text", "bg",  4.5),
     ("warning_text", "bg",  4.5),
     ("danger_text",  "bg",  4.5),
@@ -96,13 +155,14 @@ def _lista_css(papel: str) -> str:
     return ", ".join(f'"{nome}"' for nome in FONT[papel])
 
 
-_VARS: dict[str, object] = {}
-_VARS.update(COLOR)
-_VARS.update({f"space_{chave}": valor for chave, valor in SPACE.items()})
-_VARS.update({f"radius_{chave}": valor for chave, valor in RADIUS.items()})
-_VARS.update({f"size_{chave}": valor for chave, valor in SIZE.items()})
-_VARS["font_ui"] = _lista_css("ui")
-_VARS["font_mono"] = _lista_css("mono")
+# Variaveis que NAO dependem do tema. As cores entram em qss(), a cada
+# chamada, para a folha de estilo acompanhar a paleta ativa.
+_VARS_FIXAS: dict[str, object] = {}
+_VARS_FIXAS.update({f"space_{chave}": valor for chave, valor in SPACE.items()})
+_VARS_FIXAS.update({f"radius_{chave}": valor for chave, valor in RADIUS.items()})
+_VARS_FIXAS.update({f"size_{chave}": valor for chave, valor in SIZE.items()})
+_VARS_FIXAS["font_ui"] = _lista_css("ui")
+_VARS_FIXAS["font_mono"] = _lista_css("mono")
 
 # O template usa ${token} em vez de f-string porque o QSS e cheio de chaves
 # e escapar todas elas seria uma fonte silenciosa de erro.
@@ -366,6 +426,39 @@ QScrollArea {
 }
 
 /* Dica. Fundo ink com texto Snow da 14.52:1. */
+/* Abas. Sem estilo proprio elas viriam com a aparencia padrao do
+   Windows, que ignora a paleta e fica gritando fora do resto da tela. */
+QTabWidget::pane {
+    border: 1px solid ${border};
+    border-radius: ${radius_md}px;
+    background-color: ${bg};
+    top: -1px;
+}
+
+QTabBar::tab {
+    background: transparent;
+    color: ${ink_soft};
+    padding: ${space_sm}px ${space_lg}px;
+    margin-right: ${space_xs}px;
+    border: 1px solid transparent;
+    border-top-left-radius: ${radius_md}px;
+    border-top-right-radius: ${radius_md}px;
+    min-height: 24px;
+}
+
+QTabBar::tab:hover {
+    background-color: ${surface_alt};
+    color: ${ink};
+}
+
+QTabBar::tab:selected {
+    background-color: ${surface};
+    color: ${ink};
+    border: 1px solid ${border};
+    border-bottom-color: ${surface};
+    font-weight: 600;
+}
+
 QToolTip {
     background-color: ${ink};
     color: ${bg};
@@ -526,18 +619,98 @@ def familia(papel: str) -> str:
     return candidatas[-1]
 
 
+def tema_atual() -> str:
+    return _TEMA_ATUAL
+
+
+def definir_tema(nome: str) -> None:
+    """Troca a paleta ativa, mutando COLOR no lugar.
+
+    Nome desconhecido levanta ValueError de proposito: um tema escrito
+    errado precisa aparecer como erro, nao como app pintado pela metade.
+    """
+    global _TEMA_ATUAL
+
+    if nome not in PALETAS:
+        raise ValueError(
+            f"tema desconhecido: {nome!r}. Disponiveis: {', '.join(PALETAS)}"
+        )
+    COLOR.clear()
+    COLOR.update(PALETAS[nome])
+    _TEMA_ATUAL = nome
+
+    # Import aqui dentro, e nao no topo: icons importa theme, e um
+    # import circular no nivel do modulo quebraria os dois.
+    from . import icons
+
+    icons.limpar_cache()
+
+
+def tema_do_sistema() -> str:
+    """Le a preferencia de tema do Windows.
+
+    A consulta e defensiva porque `colorScheme` so existe a partir do Qt
+    6.5, e porque em algumas plataformas ela responde `Unknown`. Quando
+    nao da para saber, claro e o padrao: e o tema que foi auditado
+    primeiro e o que o cliente forneceu.
+    """
+    try:
+        from PySide6.QtCore import Qt
+        from PySide6.QtGui import QGuiApplication
+
+        estilo = QGuiApplication.styleHints()
+        consulta = getattr(estilo, "colorScheme", None)
+        if consulta is None:
+            return "claro"
+        if consulta() == Qt.ColorScheme.Dark:
+            return "escuro"
+    except Exception:
+        return "claro"
+    return "claro"
+
+
 def qss() -> str:
-    """Folha de estilo completa do app, montada a partir dos tokens."""
-    return _QSS.substitute(_VARS)
+    """Folha de estilo completa do app, montada a partir dos tokens.
+
+    As variaveis sao remontadas a cada chamada, e nao guardadas de uma
+    vez: sem isso, trocar de tema mudaria as cores dos widgets pintados
+    em codigo e deixaria a folha de estilo no tema anterior.
+    """
+    variaveis: dict[str, object] = {}
+    variaveis.update(COLOR)
+    variaveis.update(_VARS_FIXAS)
+    return _QSS.substitute(variaveis)
 
 
-def aplicar(app: "QApplication") -> None:
-    """carregar_fontes + setFont + setStyleSheet. Chamado uma vez no main."""
+def aplicar(app: "QApplication", tema: str | None = None) -> None:
+    """carregar_fontes + setFont + setStyleSheet. Chamado no main.
+
+    Sem `tema`, segue a preferencia do sistema operacional.
+    """
     from PySide6.QtGui import QFont
 
+    definir_tema(tema if tema is not None else tema_do_sistema())
     carregar_fontes()
 
     fonte = QFont(familia("ui"))
     fonte.setPixelSize(SIZE["md"])
     app.setFont(fonte)
     app.setStyleSheet(qss())
+
+
+def seguir_o_sistema(app: "QApplication") -> None:
+    """Reaplica o tema quando o usuario troca claro e escuro no Windows.
+
+    Best effort: se a versao do Qt nao tiver o sinal, o app continua com o
+    tema detectado na abertura, que ja e o comportamento util.
+    """
+    try:
+        from PySide6.QtGui import QGuiApplication
+
+        estilo = QGuiApplication.styleHints()
+        sinal = getattr(estilo, "colorSchemeChanged", None)
+        if sinal is None:
+            return
+        sinal.connect(lambda _=None: aplicar(app))
+    except Exception:
+        return

@@ -26,16 +26,19 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QPushButton,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
 
 from .. import APP_NAME
+from ..core.historico import Historico
 from ..jobs.controller import FilaController
 from ..jobs.models import Item
 from . import icons, theme
 from .destino_bar import BarraDestino
 from .drop_zone import DropZone
+from .history_view import AbaRecentes
 from .prefs import Preferencias
 from .queue_view import ListaDaFila
 
@@ -45,17 +48,23 @@ ALVO_MINIMO = 32
 class MainWindow(QMainWindow):
     """Junta zona de arraste, barra de destino, fila e rodape."""
 
-    def __init__(self, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        parent: QWidget | None = None,
+        historico_em: Path | None = None,
+    ) -> None:
+        """`historico_em` aponta o banco do historico. So os testes usam."""
         super().__init__(parent)
         self.setWindowTitle(APP_NAME)
         self.setAcceptDrops(True)
         self.resize(880, 640)
 
-        self.controller = FilaController(self)
+        self.historico = Historico(historico_em)
+        self.controller = FilaController(self, historico=self.historico)
         self.prefs = Preferencias()
 
-        raiz = QWidget()
-        layout = QVBoxLayout(raiz)
+        aba_fila = QWidget()
+        layout = QVBoxLayout(aba_fila)
         layout.setContentsMargins(
             theme.SPACE["lg"], theme.SPACE["lg"], theme.SPACE["lg"], theme.SPACE["lg"]
         )
@@ -76,7 +85,18 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.lista, 1)
         layout.addLayout(self._montar_rodape())
 
-        self.setCentralWidget(raiz)
+        self.aba_recentes = AbaRecentes(self.historico)
+        self.aba_recentes.abrir_pedido.connect(self._abrir_no_sistema)
+
+        self.abas = QTabWidget()
+        self.abas.addTab(aba_fila, "Fila")
+        self.abas.addTab(self.aba_recentes, "Recentes")
+        # A fila primeiro: quem abre o app quer converter, e nao consultar
+        # o que ja converteu.
+        self.abas.setCurrentIndex(0)
+        self.abas.currentChanged.connect(self._ao_trocar_de_aba)
+
+        self.setCentralWidget(self.abas)
         self._ligar_sinais()
         self._restaurar_preferencias()
         self._atualizar_controles()
@@ -187,6 +207,20 @@ class MainWindow(QMainWindow):
 
     def _ao_ficar_ocioso(self) -> None:
         self._atualizar_controles()
+        # A fila acabou, entao ha coisa nova no historico. Recarregar aqui
+        # evita a aba mostrar dado velho se o usuario trocar de aba logo
+        # depois de converter.
+        self.aba_recentes.atualizar()
+
+    def _ao_trocar_de_aba(self, indice: int) -> None:
+        """Recarrega o historico ao entrar na aba dele.
+
+        O banco pode ter mudado por outra janela do app aberta ao mesmo
+        tempo, entao ler na hora de mostrar e mais honesto do que confiar
+        no que foi carregado na abertura.
+        """
+        if self.abas.widget(indice) is self.aba_recentes:
+            self.aba_recentes.atualizar()
 
     def _ao_avisar(self, nivel: str, texto: str) -> None:
         cor = theme.COLOR["warning_text" if nivel == "alerta" else "ink_soft"]
