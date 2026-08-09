@@ -334,6 +334,43 @@ sobrescrevem um ao outro de forma intermitente. Serializar a decisao no
 despacho elimina a classe inteira de bug. `tests/test_controller.py` cobra
 isso convertendo `doc.csv` e `doc.json` ao mesmo tempo.
 
+## Licenca
+
+O codigo deste repositorio esta sob a licenca **MIT**, no arquivo
+`LICENSE`. Voce pode usar, copiar, modificar e redistribuir, inclusive
+comercialmente, mantendo o aviso de copyright.
+
+### Sobre o que vai dentro do executavel
+
+O `.exe` empacota bibliotecas de terceiros, cada uma com a propria
+licenca. Quase todas sao permissivas e nao pedem nada alem do aviso:
+
+| Biblioteca | Licenca |
+|---|---|
+| markitdown, onnxruntime, pdfminer.six, python-pptx, openpyxl | MIT |
+| magika | Apache-2.0 |
+| mammoth, lxml, numpy | BSD |
+| **PySide6 (Qt)** | **LGPL-3.0** ou GPL |
+
+**O PySide6 merece atencao e nao e detalhe.** Ele e LGPL, e nao MIT. A
+LGPL permite distribuir um aplicativo com licenca propria que apenas se
+liga a biblioteca, e e o caso aqui, mas ela cobra tres coisas de quem
+distribui o binario:
+
+1. avisar que o programa usa Qt e PySide6 sob LGPL;
+2. dizer onde obter o codigo fonte dessas bibliotecas;
+3. permitir que o usuario substitua a biblioteca por outra versao.
+
+O empacotamento em pasta (`onedir`) atende a terceira condicao de forma
+natural, porque as DLLs do Qt ficam em arquivos separados dentro de
+`_internal` e podem ser trocadas. As duas primeiras sao satisfeitas por
+este aviso, e o fonte do PySide6 esta em
+<https://download.qt.io/official_releases/QtForPython/>.
+
+Isto e a descricao do que as licencas dizem, e nao aconselhamento
+juridico. Para distribuicao comercial em escala, vale confirmar com quem
+entende do assunto.
+
 ## Documentacao
 
 - `docs/acessibilidade.md`: tabela de contraste medida e a justificativa do
