@@ -277,3 +277,61 @@ def test_verificar_funciona_em_caminho_longo(pasta):
         nucleo.criar_pastas(caminho.parent)
         nucleo.gravar_bytes(caminho, b"x")
     assert nucleo.verificar(destino).completa is True
+
+
+# ------------------------------------------------- frescor da construcao
+
+def test_build_obsoleto_e_detectado(pasta, monkeypatch):
+    """Fonte mais nova que o executavel significa build velho.
+
+    Isto ja mordeu de verdade: o instalador foi gerado reaproveitando um
+    app construido antes de uma correcao de interface, e entregou ao
+    usuario a versao com o bug que acabara de ser consertado. Reaproveitar
+    e otimo, desde que nao seja em silencio.
+    """
+    from installer import build_setup
+
+    app = pasta / "dist" / "MarkItDown"
+    app.mkdir(parents=True)
+    exe = app / "MarkItDown.exe"
+    exe.write_bytes(b"binario")
+
+    fonte = pasta / "markitdown_gui" / "ui" / "queue_row.py"
+    fonte.parent.mkdir(parents=True)
+    fonte.write_text("codigo novo", encoding="utf-8")
+    import os
+    import time
+
+    os.utime(fonte, (time.time() + 60, time.time() + 60))
+
+    monkeypatch.setattr(build_setup, "RAIZ", pasta)
+    monkeypatch.setattr(build_setup, "APP_EM_PASTA", app)
+    assert build_setup.build_esta_obsoleto() is True
+
+
+def test_build_atual_nao_e_reconstruido(pasta, monkeypatch):
+    from installer import build_setup
+    import os
+    import time
+
+    app = pasta / "dist" / "MarkItDown"
+    app.mkdir(parents=True)
+    exe = app / "MarkItDown.exe"
+
+    fonte = pasta / "markitdown_gui" / "ui" / "queue_row.py"
+    fonte.parent.mkdir(parents=True)
+    fonte.write_text("codigo", encoding="utf-8")
+    exe.write_bytes(b"binario")
+    os.utime(exe, (time.time() + 60, time.time() + 60))
+
+    monkeypatch.setattr(build_setup, "RAIZ", pasta)
+    monkeypatch.setattr(build_setup, "APP_EM_PASTA", app)
+    assert build_setup.build_esta_obsoleto() is False
+
+
+def test_sem_build_nenhum_conta_como_obsoleto(pasta, monkeypatch):
+    from installer import build_setup
+
+    monkeypatch.setattr(build_setup, "RAIZ", pasta)
+    monkeypatch.setattr(build_setup, "APP_EM_PASTA", pasta / "nao_existe")
+    assert build_setup.build_esta_obsoleto() is True

@@ -157,3 +157,55 @@ def test_atualizar_nao_troca_o_item(qapp):
     item.estado = Estado.CONCLUIDO
     linha.atualizar(item)
     assert linha.item_id == antes
+
+
+def test_toda_linha_tem_a_mesma_altura(qapp):
+    """Lista com alturas diferentes por linha parece quebrada.
+
+    A altura variava conforme o estado: item com "Ver detalhes" ficava mais
+    alto, item convertendo ficava mais baixo por causa da barra. Numa fila
+    de vinte arquivos isso vira um serrilhado que parece defeito de
+    renderizacao, e nao decisao de design.
+    """
+    alturas = {}
+    for estado in Estado:
+        item = Item(origem=Path("documento.pdf"), estado=estado)
+        if estado is Estado.FALHOU:
+            item.mensagem = "Nao foi possivel ler o arquivo"
+            item.detalhe = "FileConversionException: senha"
+        linha = LinhaDaFila(item)
+        linha.atualizar(item)
+        alturas[estado.value] = linha.sizeHint().height()
+
+    assert len(set(alturas.values())) == 1, f"alturas diferentes: {alturas}"
+
+
+def test_altura_nao_muda_quando_o_item_muda_de_estado(qapp):
+    """A linha e reusada, entao ela nao pode pular de tamanho no meio."""
+    item = Item(origem=Path("documento.pdf"), estado=Estado.PENDENTE)
+    linha = LinhaDaFila(item)
+    inicial = linha.sizeHint().height()
+
+    for estado in Estado:
+        item.estado = estado
+        item.mensagem = "Nao foi possivel ler" if estado is Estado.FALHOU else ""
+        item.detalhe = "detalhe tecnico" if estado is Estado.FALHOU else ""
+        linha.atualizar(item)
+        assert linha.sizeHint().height() == inicial, (
+            f"a linha mudou de altura ao virar {estado.value}"
+        )
+
+
+def test_icone_do_formato_alinha_com_o_nome(qapp):
+    """O icone precisa ficar na altura do nome, nao no meio da linha.
+
+    Centralizado, ele descola do texto e a linha parece desmontada.
+    """
+    from PySide6.QtCore import Qt
+
+    item = Item(origem=Path("documento.pdf"), estado=Estado.FALHOU)
+    item.mensagem = "erro"
+    item.detalhe = "tecnico"
+    linha = LinhaDaFila(item)
+    alinhamento = linha.layout().itemAt(0).alignment()
+    assert alinhamento & Qt.AlignmentFlag.AlignTop, "icone do formato nao esta no topo"

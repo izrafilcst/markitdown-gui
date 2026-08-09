@@ -55,11 +55,43 @@ def _versao() -> str:
         return "1.0.0"
 
 
+FONTES = ("markitdown_gui", "main.py")
+
+
+def build_esta_obsoleto() -> bool:
+    """Diz se o app empacotado e mais velho que o codigo fonte.
+
+    Isto ja mordeu de verdade neste projeto: uma correcao de interface foi
+    feita e commitada, o instalador foi gerado logo depois reaproveitando
+    o `dist/MarkItDown` anterior, e o usuario recebeu o programa com o bug
+    que acabara de ser consertado. Reaproveitar build e otimo; reaproveitar
+    em silencio e armadilha.
+    """
+    exe = APP_EM_PASTA / "MarkItDown.exe"
+    if not exe.exists():
+        return True
+    idade_do_build = exe.stat().st_mtime
+
+    for nome in FONTES:
+        alvo = RAIZ / nome
+        if alvo.is_file():
+            if alvo.stat().st_mtime > idade_do_build:
+                return True
+        elif alvo.is_dir():
+            for caminho in alvo.rglob("*.py"):
+                if caminho.stat().st_mtime > idade_do_build:
+                    return True
+    return False
+
+
 def garantir_app_em_pasta() -> None:
     if (APP_EM_PASTA / "MarkItDown.exe").exists():
-        print(f"usando o app ja construido em {APP_EM_PASTA}")
-        return
-    print("app em pasta nao encontrado, construindo antes")
+        if not build_esta_obsoleto():
+            print(f"usando o app ja construido em {APP_EM_PASTA}")
+            return
+        print("o codigo mudou depois do ultimo build do app, reconstruindo")
+    else:
+        print("app em pasta nao encontrado, construindo antes")
     sys.path.insert(0, str(RAIZ))
     import build
 

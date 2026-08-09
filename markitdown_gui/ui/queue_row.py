@@ -34,6 +34,17 @@ from . import icons, theme
 
 ALVO_MINIMO = 32
 
+# Altura fixa da linha, e nao calculada pelo conteudo.
+#
+# O conteudo varia: item que falhou ganha o botao "Ver detalhes", que tem
+# 32 px por regra de alvo de clique, e item convertendo ganha a barra de
+# progresso. Deixar o layout decidir produzia linhas de 64, 66 e 92 px na
+# mesma lista, e o serrilhado resultante parece defeito de renderizacao.
+#
+# A conta: margem 8 em cima e embaixo, nome 20, espaco 4, linha de estado
+# 32 (a altura do botao de detalhe), espaco 4, barra 4.
+ALTURA_DA_LINHA = 80
+
 # Cada estado carrega icone, cor do texto e o papel do botao de acao.
 # Manter os tres na mesma tabela evita que um deles seja esquecido quando
 # um estado novo aparecer.
@@ -96,11 +107,16 @@ class LinhaDaFila(QWidget):
 
         linha_estado = QHBoxLayout()
         linha_estado.setSpacing(theme.SPACE["xs"])
+        # Reserva a altura do botao de detalhe mesmo quando ele nao
+        # aparece, senao a linha encolhe e cresce conforme o estado.
+        linha_estado.addStrut(ALVO_MINIMO)
 
         self._icone_estado_label = QLabel()
         self._estado = QLabel()
         self._estado.setObjectName("LinhaEstado")
-        self._estado.setWordWrap(True)
+        # Sem quebra de linha: com altura fixa, texto longo estouraria
+        # a linha. O texto completo continua no tooltip.
+        self._estado.setWordWrap(False)
 
         self.botao_detalhe = QPushButton("Ver detalhes")
         self.botao_detalhe.setObjectName("BotaoDiscreto")
@@ -130,11 +146,19 @@ class LinhaDaFila(QWidget):
         self.botao_acao.setCursor(Qt.CursorShape.PointingHandCursor)
         self.botao_acao.clicked.connect(self._ao_clicar_acao)
 
-        raiz.addWidget(self._icone_formato)
+        raiz.addWidget(self._icone_formato, 0, Qt.AlignmentFlag.AlignTop)
         raiz.addLayout(meio, 1)
-        raiz.addWidget(self.botao_acao)
+        raiz.addWidget(self.botao_acao, 0, Qt.AlignmentFlag.AlignTop)
 
+        self.setFixedHeight(ALTURA_DA_LINHA)
         self.atualizar(item)
+
+    def sizeHint(self) -> QSize:
+        """Altura sempre igual, largura pedida pelo layout."""
+        return QSize(super().sizeHint().width(), ALTURA_DA_LINHA)
+
+    def minimumSizeHint(self) -> QSize:
+        return QSize(super().minimumSizeHint().width(), ALTURA_DA_LINHA)
 
     # leitura, usada pelos testes e pela janela principal
 
@@ -174,6 +198,7 @@ class LinhaDaFila(QWidget):
         if item.mensagem:
             texto = f"{texto}: {item.mensagem}"
         self._estado.setText(texto)
+        self._estado.setToolTip(texto)
         self._estado.setStyleSheet(f"color: {theme.COLOR[token_cor]};")
 
         self._icone_estado = icons.icone(nome_icone, theme.COLOR[token_cor], 16)
