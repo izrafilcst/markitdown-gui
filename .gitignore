@@ -21,3 +21,6 @@ dist/
 .swarm/
 .claude-flow/
 ruvector.db
+
+# Fixtures binarias sao geradas por tests/fixtures/gerar_formatos.py
+tests/fixtures/formatos/
