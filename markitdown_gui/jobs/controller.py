@@ -283,8 +283,25 @@ class FilaController(QObject):
             item.estado = Estado.CONCLUIDO
             item.destino = Path(caminho)
             item.caracteres = caracteres
-            item.mensagem = ""
-            item.detalhe = ""
+            # Conversao que nao rende texto e o caso do PDF digitalizado:
+            # o markitdown nao falha, so devolve string vazia, e o app
+            # gravaria um .md vazio dizendo "Concluido". Para quem nao e
+            # tecnico, esse silencio e pior do que uma falha honesta, entao
+            # o item conclui mas explica o que aconteceu.
+            if caracteres == 0:
+                item.mensagem = (
+                    "Nenhum texto foi encontrado. O arquivo pode ser "
+                    "digitalizado, ou seja, uma imagem sem texto dentro"
+                )
+                item.detalhe = (
+                    "A conversao terminou sem erro, mas o resultado tem zero "
+                    "caracteres. Arquivos digitalizados precisam de "
+                    "reconhecimento otico de caracteres, que este app nao faz "
+                    "porque exigiria enviar o arquivo para um servico online."
+                )
+            else:
+                item.mensagem = ""
+                item.detalhe = ""
             self.item_alterado.emit(item_id)
         self._emitir_progresso()
         self._despachar()

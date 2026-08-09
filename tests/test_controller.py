@@ -163,3 +163,48 @@ def test_nomes_nao_colidem_entre_workers(app, pasta):
     gerados = sorted(p.name for p in destino.glob("*.md"))
     assert gerados == ["doc_convertido (2).md", "doc_convertido.md"]
     c.encerrar()
+
+
+def test_conversao_vazia_avisa_em_vez_de_calar(app, pasta):
+    """Arquivo que nao rende texto nao pode passar por sucesso silencioso.
+
+    Um PDF digitalizado e so imagem: o markitdown converte sem erro e
+    devolve string vazia. Sem este aviso, o app grava um .md vazio, diz
+    "Concluido" e o usuario so descobre ao abrir o arquivo. Para o publico
+    deste app, que nao e tecnico, isso e pior do que uma falha honesta.
+    """
+    origem = pasta / "entrada"
+    origem.mkdir()
+    (origem / "vazio.txt").write_text("", encoding="utf-8")
+
+    destino = pasta / "saida"
+    c = FilaController()
+    c.definir_destino(destino)
+    c.adicionar([origem])
+
+    espera = EsperaOcioso(c)
+    c.iniciar()
+    assert espera.esperar(30000)
+
+    item = c.itens[0]
+    assert item.estado is Estado.CONCLUIDO
+    assert item.caracteres == 0
+    assert item.mensagem, "conversao vazia precisa dizer alguma coisa"
+    assert "texto" in item.mensagem.lower()
+    c.encerrar()
+
+
+def test_conversao_normal_nao_ganha_mensagem(app, entradas, pasta):
+    """O aviso acima nao pode vazar para o caminho feliz."""
+    destino = pasta / "saida"
+    c = FilaController()
+    c.definir_destino(destino)
+    c.adicionar([entradas])
+
+    espera = EsperaOcioso(c)
+    c.iniciar()
+    assert espera.esperar(30000)
+
+    assert all(i.caracteres > 0 for i in c.itens)
+    assert all(i.mensagem == "" for i in c.itens)
+    c.encerrar()
