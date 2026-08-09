@@ -27,7 +27,10 @@ from PySide6.QtWidgets import (
 
 from . import icons, theme
 
-SEM_DESTINO = "Na mesma pasta do arquivo original"
+# A copia precisa bater com o comportamento: o controller recusa converter
+# sem destino. Prometer "na mesma pasta do original" faria a interface
+# mentir, e o usuario descobriria o erro so ao clicar em Converter.
+SEM_DESTINO = "Nenhuma pasta escolhida ainda"
 ALVO_MINIMO = 32
 
 

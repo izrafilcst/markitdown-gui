@@ -29,6 +29,7 @@ from fixtures.gerar_formatos import gerar_todos  # noqa: E402
 
 from markitdown_gui.jobs.models import Estado  # noqa: E402
 from markitdown_gui.ui import theme  # noqa: E402
+from markitdown_gui.ui.prefs import Preferencias  # noqa: E402
 from markitdown_gui.ui.main_window import MainWindow  # noqa: E402
 
 
@@ -381,3 +382,27 @@ def test_destino_e_lembrado_entre_sessoes(qapp, pasta):
 #   - Ausencia de python.exe orfao no Gerenciador de Tarefas. O teste
 #     verifica o pool de threads do processo, que e o mecanismo real, mas
 #     nao inspeciona a lista de processos do sistema.
+
+
+def test_converter_sem_destino_avisa_e_nao_converte(qapp, formatos):
+    """A interface e o controller precisam contar a mesma historia.
+
+    O controller recusa converter sem destino. A barra nao pode sugerir
+    que existe um destino padrao, e o aviso precisa dizer o que fazer.
+    """
+    # Limpa as preferencias antes de abrir a janela: sem isto, um destino
+    # gravado por outro teste seria restaurado e o cenario nao existiria.
+    Preferencias().limpar()
+
+    janela = MainWindow()
+    janela.controller.adicionar([formatos["pdf"]])
+    qapp.processEvents()
+    assert janela.controller.destino is None, "o cenario exige fila sem destino"
+
+    janela.botao_converter.click()
+    qapp.processEvents()
+
+    assert janela.controller.itens[0].estado is Estado.PENDENTE
+    aviso = janela.texto_do_aviso().lower()
+    assert "destino" in aviso and "escolha" in aviso
+    assert "original" not in janela.barra_destino.texto_do_destino().lower()

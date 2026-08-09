@@ -82,12 +82,20 @@ def test_definir_destino_mostra_o_caminho(qapp, pasta):
     assert str(pasta) in barra.texto_do_destino()
 
 
-def test_destino_none_explica_o_que_acontece(qapp):
-    """Sem destino escolhido, o app grava ao lado do original."""
+def test_destino_none_nao_promete_o_que_o_app_nao_faz(qapp):
+    """Sem destino, a barra precisa pedir uma pasta, nao inventar uma.
+
+    O controller recusa converter sem destino, com o aviso "Escolha a pasta
+    de destino antes de converter". Se a barra dissesse que grava ao lado
+    do original, a interface estaria prometendo um comportamento que o app
+    nao tem, e o usuario clicaria em Converter para receber um erro.
+    """
     barra = BarraDestino()
     barra.definir_destino(None)
     texto = barra.texto_do_destino().lower()
-    assert "original" in texto or "mesma pasta" in texto
+    assert "escolha" in texto or "nenhuma" in texto
+    assert "original" not in texto
+    assert "mesma pasta" not in texto
 
 
 def test_definir_destino_nao_emite_sinal(qapp, pasta):
