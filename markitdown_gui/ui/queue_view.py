@@ -15,14 +15,24 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtGui import QDragEnterEvent, QDropEvent
 from PySide6.QtWidgets import QAbstractItemView, QListWidget, QListWidgetItem, QWidget
 
 from ..jobs.models import Item
+from . import theme
 from .queue_row import LinhaDaFila
 
 PAPEL_ID = Qt.ItemDataRole.UserRole
+
+# A folha de estilo poe borda, padding e margem em QListWidget::item, e
+# esse espaco sai da area util do widget embutido. Gravar no item o
+# sizeHint cru da linha faz o conteudo ficar maior que o espaco recebido,
+# e o nome do arquivo aparece cortado ao meio. Os valores abaixo espelham
+# `QListWidget::item` em theme.py, e a checagem em `_ajustar_altura`
+# conserta sozinha se aquela regra mudar sem que ninguem lembre daqui.
+_BORDA_DO_ITEM = 1
+_CHROME_VERTICAL = 2 * (_BORDA_DO_ITEM + theme.SPACE["sm"] + theme.SPACE["xs"])
 
 
 class ListaDaFila(QListWidget):
@@ -73,7 +83,7 @@ class ListaDaFila(QListWidget):
 
             casca = QListWidgetItem(self)
             casca.setData(PAPEL_ID, item.id)
-            casca.setSizeHint(linha.sizeHint())
+            casca.setSizeHint(self._altura_necessaria(linha))
             self.addItem(casca)
             self.setItemWidget(casca, linha)
             self._linhas[item.id] = linha
@@ -85,7 +95,7 @@ class ListaDaFila(QListWidget):
         linha.atualizar(item)
         casca = self._casca(item.id)
         if casca is not None:
-            casca.setSizeHint(linha.sizeHint())
+            casca.setSizeHint(self._altura_necessaria(linha))
 
     def remover(self, item_ids: list[str]) -> None:
         alvo = set(item_ids)
@@ -100,6 +110,37 @@ class ListaDaFila(QListWidget):
         self._linhas.clear()
 
     # apoio
+
+    def _altura_necessaria(self, linha: LinhaDaFila) -> QSize:
+        """Altura do conteudo mais o espaco que a folha de estilo consome."""
+        pedido = linha.sizeHint()
+        return QSize(pedido.width(), pedido.height() + _CHROME_VERTICAL)
+
+    def _ajustar_alturas(self) -> None:
+        """Corrige qualquer linha que ainda esteja recebendo menos do que pede.
+
+        Existe como rede de seguranca: se alguem mexer no padding de
+        `QListWidget::item` sem atualizar _CHROME_VERTICAL, o conteudo
+        voltaria a ser cortado em silencio. Aqui a diferenca e medida no
+        widget de verdade e devolvida ao item.
+        """
+        for i in range(self.count()):
+            casca = self.item(i)
+            linha = self._linhas.get(casca.data(PAPEL_ID))
+            if linha is None:
+                continue
+            falta = linha.sizeHint().height() - linha.height()
+            if falta > 0:
+                atual = casca.sizeHint()
+                casca.setSizeHint(QSize(atual.width(), atual.height() + falta))
+
+    def showEvent(self, evento) -> None:
+        super().showEvent(evento)
+        self._ajustar_alturas()
+
+    def resizeEvent(self, evento) -> None:
+        super().resizeEvent(evento)
+        self._ajustar_alturas()
 
     def _casca(self, item_id: str) -> QListWidgetItem | None:
         for i in range(self.count()):
@@ -123,7 +164,7 @@ class ListaDaFila(QListWidget):
         linha = self._linhas.get(item_id)
         self.insertItem(para, casca)
         if linha is not None:
-            casca.setSizeHint(linha.sizeHint())
+            casca.setSizeHint(self._altura_necessaria(linha))
             self.setItemWidget(casca, linha)
 
     # arraste

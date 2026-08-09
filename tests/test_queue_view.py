@@ -195,3 +195,62 @@ def test_repetir_e_abrir_tambem_sobem(qapp):
 
 def test_lista_aceita_drops(qapp):
     assert ListaDaFila().acceptDrops() is True
+
+
+NOME_LONGO = "Pearson VUE - It's time to test your system.pdf"
+
+
+def test_linha_nao_e_cortada_dentro_da_lista(qapp):
+    """A linha precisa caber inteira, com a folha de estilo aplicada.
+
+    O QSS poe padding e margem em QListWidget::item, e esse espaco sai da
+    area do widget embutido. Gravar no item o sizeHint cru da linha deixa
+    o conteudo maior que o espaco disponivel, e o nome do arquivo aparece
+    cortado ao meio. Foi exatamente o que apareceu na tela.
+    """
+    from markitdown_gui.ui import theme
+
+    qapp.setStyleSheet(theme.qss())
+    lista = ListaDaFila()
+    lista.resize(900, 400)
+    (item,) = [Item(origem=Path(NOME_LONGO), estado=Estado.CONCLUIDO)]
+    lista.adicionar([item])
+    lista.show()
+    qapp.processEvents()
+
+    linha = lista.linha(item.id)
+    assert linha.height() >= linha.sizeHint().height(), (
+        f"linha cortada: tem {linha.height()}px, precisa de "
+        f"{linha.sizeHint().height()}px"
+    )
+    lista.close()
+    qapp.setStyleSheet("")
+
+
+def test_nome_longo_e_encurtado_e_nao_estoura(qapp):
+    """Nome que nao cabe vira reticencias, e o completo fica no tooltip."""
+    lista = ListaDaFila()
+    lista.resize(320, 200)          # estreito de proposito
+    item = Item(origem=Path("C:/Downloads") / NOME_LONGO)
+    lista.adicionar([item])
+    lista.show()
+    qapp.processEvents()
+
+    linha = lista.linha(item.id)
+    exibido = linha.texto_do_nome()
+    assert "\u2026" in exibido or len(exibido) < len(NOME_LONGO), (
+        f"nome nao foi encurtado numa lista estreita: {exibido!r}"
+    )
+    assert NOME_LONGO in linha._nome.toolTip()
+    lista.close()
+
+
+def test_nome_curto_fica_intacto(qapp):
+    lista = ListaDaFila()
+    lista.resize(900, 200)
+    item = Item(origem=Path("a.pdf"))
+    lista.adicionar([item])
+    lista.show()
+    qapp.processEvents()
+    assert lista.linha(item.id).texto_do_nome() == "a.pdf"
+    lista.close()

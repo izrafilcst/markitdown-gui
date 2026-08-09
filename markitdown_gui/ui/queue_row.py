@@ -18,12 +18,13 @@ item muda de estado, o que importa para quem tem dificuldade motora.
 from __future__ import annotations
 
 from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QFontMetrics, QIcon
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QProgressBar,
     QPushButton,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -85,6 +86,13 @@ class LinhaDaFila(QWidget):
         self._nome.setTextInteractionFlags(
             Qt.TextInteractionFlag.TextSelectableByMouse
         )
+        # Sem isto o rotulo exige a largura do nome inteiro, e um nome
+        # longo empurra a linha para fora da janela em vez de encolher.
+        self._nome.setMinimumWidth(0)
+        self._nome.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred
+        )
+        self._nome_completo = ""
 
         linha_estado = QHBoxLayout()
         linha_estado.setSpacing(theme.SPACE["xs"])
@@ -154,8 +162,9 @@ class LinhaDaFila(QWidget):
         nem posicao de rolagem quando o estado muda no meio de um lote.
         """
         self.item_id = item.id
-        self._nome.setText(item.nome)
+        self._nome_completo = item.nome
         self._nome.setToolTip(str(item.origem))
+        self._encurtar_nome()
 
         nome_icone, token_cor, acao = _ESTADOS[item.estado]
 
@@ -188,6 +197,29 @@ class LinhaDaFila(QWidget):
             self.botao_acao.setToolTip(rotulo)
 
         self.setAccessibleName(f"{item.nome}, {texto}")
+
+    def _encurtar_nome(self) -> None:
+        """Encaixa o nome na largura disponivel, cortando pelo meio.
+
+        Pelo meio, e nao pelo fim, porque a extensao e a informacao que o
+        usuario mais procura numa fila de conversao: saber se aquela linha
+        e o PDF ou o DOCX importa mais do que ler o nome inteiro. O nome
+        completo continua no tooltip e no leitor de tela.
+        """
+        largura = self._nome.width()
+        if largura <= 0:
+            self._nome.setText(self._nome_completo)
+            return
+        metrica = QFontMetrics(self._nome.font())
+        self._nome.setText(
+            metrica.elidedText(
+                self._nome_completo, Qt.TextElideMode.ElideMiddle, largura
+            )
+        )
+
+    def resizeEvent(self, evento) -> None:
+        super().resizeEvent(evento)
+        self._encurtar_nome()
 
     def _ao_clicar_acao(self) -> None:
         if self._acao_atual == "remover":
