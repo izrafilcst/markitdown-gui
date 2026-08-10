@@ -31,7 +31,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .. import APP_NAME
+from .. import APP_NAME, APP_VERSION
 from ..core.historico import Historico
 from ..jobs.controller import FilaController
 from ..jobs.models import Item
@@ -39,6 +39,7 @@ from . import icons, theme
 from .destino_bar import BarraDestino
 from .drop_zone import DropZone
 from .history_view import AbaRecentes
+from .update_view import DialogoDeAtualizacao
 from .prefs import Preferencias
 from .queue_view import ListaDaFila
 
@@ -98,6 +99,7 @@ class MainWindow(QMainWindow):
         self.abas.currentChanged.connect(self._ao_trocar_de_aba)
 
         self.setCentralWidget(self.abas)
+        self._montar_menu()
         self._ligar_sinais()
         self._restaurar_preferencias()
         self._atualizar_controles()
@@ -131,6 +133,30 @@ class MainWindow(QMainWindow):
         rodape.addWidget(self.botao_pausar)
         rodape.addWidget(self.botao_converter)
         return rodape
+
+    def _montar_menu(self) -> None:
+        """Menu de ajuda, com o caminho para verificar atualizacoes.
+
+        Menu e nao botao no rodape: o rodape ja tem tres botoes e a acao
+        aqui e ocasional, nao parte do fluxo de conversao.
+        """
+        self.menu_ajuda = self.menuBar().addMenu("Ajuda")
+
+        acao = self.menu_ajuda.addAction("Verificar atualizacoes...")
+        acao.setStatusTip("Consulta o GitHub para ver se ha uma versao nova")
+        acao.triggered.connect(self.verificar_atualizacoes)
+
+        self.menu_ajuda.addSeparator()
+        sobre = self.menu_ajuda.addAction(f"{APP_NAME} {APP_VERSION}")
+        sobre.setEnabled(False)
+
+    def criar_dialogo_de_atualizacao(self) -> DialogoDeAtualizacao:
+        """Cria o dialogo sem abrir. Existe para o teste poder inspecionar."""
+        return DialogoDeAtualizacao(self, versao=APP_VERSION)
+
+    def verificar_atualizacoes(self) -> None:
+        """Abre o dialogo. A consulta so acontece se o usuario clicar la."""
+        self.criar_dialogo_de_atualizacao().exec()
 
     def _ligar_sinais(self) -> None:
         c = self.controller

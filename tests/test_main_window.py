@@ -262,3 +262,34 @@ def test_janela_tem_icone(qapp):
     icone = janela.windowIcon()
     assert not icone.isNull()
     assert len(icone.availableSizes()) >= 3
+
+
+def test_menu_de_ajuda_com_verificar_atualizacoes(qapp):
+    """O verificador precisa ter um caminho obvio na interface."""
+    janela = MainWindow()
+    barra = janela.menuBar()
+    menus = [barra.actions()[i].text() for i in range(len(barra.actions()))]
+    assert any("ajuda" in m.lower() for m in menus), f"menus: {menus}"
+
+    acoes = [a.text().lower() for a in janela.menu_ajuda.actions()]
+    assert any("atualiza" in a for a in acoes), f"acoes: {acoes}"
+
+
+def test_abrir_o_dialogo_nao_consulta_sozinho(qapp, monkeypatch):
+    """Abrir a janela principal nao pode disparar consulta de rede."""
+    from markitdown_gui import atualizacao
+
+    chamadas = []
+    monkeypatch.setattr(
+        atualizacao, "verificar",
+        lambda **k: chamadas.append(1) or atualizacao.Resultado(),
+    )
+    janela = MainWindow()
+    qapp.processEvents()
+    assert chamadas == []
+
+    dialogo = janela.criar_dialogo_de_atualizacao()
+    qapp.processEvents()
+    assert chamadas == [], "o dialogo consultou so por ter sido criado"
+    assert dialogo.versao_instalada
+    dialogo.reject()

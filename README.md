@@ -4,11 +4,15 @@ Aplicativo de desktop para Windows que converte documentos para Markdown
 usando a biblioteca [markitdown](https://github.com/microsoft/markitdown)
 da Microsoft. Arraste arquivos ou pastas, escolha onde salvar, converta.
 
-**Funciona 100% offline.** Nenhum arquivo sai da sua maquina, e isso nao e
-so uma promessa de texto: `tests/test_offline.py` bloqueia a criacao de
-sockets e converte arquivos reais com a rede proibida, e uma varredura
-estatica reprova o build se qualquer cliente HTTP for sequer mencionado no
-codigo.
+**Converte sem internet, e seus documentos nunca saem da maquina.** Isso
+nao e so uma frase: `tests/test_offline.py` bloqueia a criacao de sockets
+e converte arquivos reais com a rede proibida, e uma varredura estatica
+reprova o build se o caminho de conversao mencionar cliente HTTP.
+
+O programa inteiro tem **um unico** ponto que fala com a rede, e ele nao
+toca em documento nenhum: a verificacao de atualizacao, que so acontece
+quando voce pede, no menu Ajuda. Detalhes na secao
+[Verificar atualizacoes](#verificar-atualizacoes).
 
 ## O que ele converte
 
@@ -145,6 +149,31 @@ O tema escuro nao e o claro invertido: as superficies sao um verde-azulado
 profundo da mesma familia da paleta, e o Mint Leaf continua sendo a cor de
 acao. Os mesmos 14 pares de contraste sao medidos por teste nos dois
 temas, entao a acessibilidade nao vale so no claro.
+
+### Verificar atualizacoes
+
+Menu **Ajuda**, opcao **Verificar atualizacoes**. O app consulta a pagina
+de versoes do projeto no GitHub, diz se ha uma versao mais nova, e oferece
+baixar e abrir o instalador. A atualizacao acontece por cima da instalacao
+atual; seus arquivos convertidos e seu historico nao sao afetados.
+
+**O app nunca verifica sozinho.** Nada acontece na abertura, e nada
+acontece em segundo plano: a consulta so parte quando voce clica. Essa
+decisao esta travada por teste.
+
+Sobre a promessa de funcionar offline, vale a precisao:
+
+> **Seus documentos nunca saem da maquina.** O caminho por onde o arquivo
+> passa, `core/` e `jobs/`, continua provado sem rede por varredura
+> estatica, sem excecao nenhuma.
+>
+> O unico acesso a rede do programa inteiro e essa consulta de versao, que
+> vive num arquivo so, `markitdown_gui/atualizacao.py`. Ela e um GET
+> simples, sem corpo, sem identificador e sem telemetria: o servidor
+> descobre que alguem perguntou a versao, e nada mais. Ha teste que
+> reprova o build se qualquer outro arquivo do pacote mencionar rede, e
+> teste que reprova se esse arquivo mencionar historico ou nome de
+> arquivo do usuario.
 
 ### Uso so pelo teclado
 
