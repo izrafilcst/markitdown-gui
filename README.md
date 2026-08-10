@@ -405,4 +405,3 @@ entende do assunto.
 - `docs/acessibilidade.md`: tabela de contraste medida e a justificativa do
   token `ink`.
 - `docs/design.md`: decisoes de produto e arquitetura.
-- `docs/PLANO-EXECUCAO.md`: contratos congelados entre modulos.

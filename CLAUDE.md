@@ -3,8 +3,7 @@
 ## Regras do projeto MarkItDown
 
 Estas regras vem do dono do projeto e valem acima de qualquer outra secao
-deste arquivo. A fonte de verdade completa esta em `docs/PLANO-EXECUCAO.md`
-secoes 3 e 4.
+deste arquivo.
 
 1. **Nada de travessao americano.** Proibido o caractere de travessao longo
    e o de travessao medio em codigo, comentario, docstring, documentacao,
@@ -22,8 +21,8 @@ secoes 3 e 4.
 6. **Cor nunca e o unico indicador de estado.** Todo estado da fila carrega
    icone e texto alem da cor.
 7. **Nada de emoji como icone.** Icones sao SVG desenhados em `ui/icons.py`.
-8. **Contratos da secao 4 do plano sao lei.** Divergencia se reporta, nao se
-   conserta.
+8. **Assinatura publica de modulo e contrato.** Mudar uma assinatura que
+   outro modulo ja usa se reporta, nao se conserta por conta propria.
 9. **Testes de widget rodam headless**, com `QT_QPA_PLATFORM=offscreen`.
 10. O interpretador do projeto e `.venv\Scripts\python.exe`.
 

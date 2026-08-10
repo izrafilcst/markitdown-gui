@@ -9,9 +9,9 @@ e a sessao de execucao que escreveu este arquivo nao teve acesso a ela.
 
 Em vez de reconstruir de memoria e apresentar invencao como registro, o
 que esta abaixo e reconstruido **apenas** a partir de fontes verificaveis:
-`docs/PLANO-EXECUCAO.md`, `docs/plans/2026-08-07-markitdown-gui.md`, e as
-decisoes tomadas durante a implementacao, que estao no codigo e nos
-commits. As decisoes marcadas com **[origem: brainstorming]** aparecem
+os documentos de planejamento internos do projeto, que nao sao
+publicados, e as decisoes tomadas durante a implementacao, que estao no
+codigo e nos commits. As decisoes marcadas com **[origem: brainstorming]** aparecem
 justificadas nos documentos de plano; as marcadas com
 **[origem: execucao]** foram tomadas ao implementar. Falta o registro das
 alternativas descartadas na sessao original, e essa lacuna e real.
@@ -163,7 +163,7 @@ original mudou**: os 7.45:1 e 9.06:1 continuam iguais. O que mudou foi o
 nome do token nos pares auditados, e o teste agora roda parametrizado nas
 duas paletas.
 
-Vale registrar como divergencia do contrato: a secao 4.1 lista os pares
+Vale registrar como divergencia do contrato original, que lista os pares
 com `ink`. A intencao (texto sobre accent precisa passar) esta preservada,
 o valor medido no tema claro tambem, mas o nome do token mudou.
 
