@@ -185,6 +185,55 @@ Quem guarda dado de alguem precisa oferecer o botao de apagar, senao
 "local" vira so uma palavra. A confirmacao deixa claro o que o botao faz e
 o que ele nao faz: apaga o registro, nao apaga os arquivos convertidos.
 
+### D18. Widget embutido nao herda estado de selecao  **[origem: execucao]**
+
+Um widget colocado com `setItemWidget` e filho do item, e nao o item.
+`QListWidget::item:selected` do QSS pinta o fundo, mas nao alcanca as
+cores que o widget define por dentro. O resultado media 1.01:1 no tema
+escuro, ou seja, texto invisivel.
+
+A correcao tem duas partes. A linha passou a receber
+`definir_selecionada`, e a lista avisa a cada mudanca. E os dois estados
+de selecao do QSS, com e sem foco de janela, passaram a usar o **mesmo
+fundo**: antes um era claro e o outro escuro, e o widget nao tinha como
+saber qual estava valendo, entao pintava o texto para um e recebia o
+outro. Perdeu-se a distincao visual entre janela focada e nao focada, e
+ganhou-se legibilidade garantida. Troca deliberada.
+
+### D19. O verificador de atualizacao estreitou a promessa offline  **[origem: execucao]**
+
+Este e o unico ponto do projeto onde uma decisao do dono do produto
+mudou uma garantia tecnica, e por isso vale registro completo.
+
+O app prometia "nunca toca a rede", provado por varredura estatica em
+`markitdown_gui/**`. Verificar atualizacao exige falar com o GitHub.
+
+Havia a saida facil: por o codigo de rede num pacote fora da varredura. O
+teste continuaria verde e a promessa ficaria falsa. Foi recusada.
+
+O que se fez: separar as duas promessas e provar cada uma.
+
+- **"Seus documentos nunca saem da maquina"** continua absoluta. `core/`
+  e `jobs/`, por onde o arquivo passa, tem varredura sem excecao nenhuma.
+- **"O app nunca toca a rede"** deixou de valer, e foi substituida por
+  "o unico acesso a rede e uma consulta de versao que o usuario pede".
+  Ela vive em um arquivo so, nomeado no proprio teste, e ha teste
+  garantindo que esse arquivo nao mencione historico nem nome de arquivo.
+- A verificacao nunca e automatica, e ha teste para isso.
+- O download so aceita URL dos dominios de release do GitHub, comparada
+  por componente de host: `github.com.malicioso.io` nao passa.
+
+### D20. Concorrencia com o padrao que ja existia  **[origem: execucao]**
+
+A primeira versao do verificador usava `QThread`, e derrubava o processo
+no encerramento: a thread sobrevivia ao dialogo. A suite parava de
+imprimir o resumo final, que foi como o defeito apareceu.
+
+A correcao nao foi consertar o `QThread`, foi trocar por `QThreadPool`
+com `QRunnable`, que e o que `jobs/worker.py` ja usava. Introduzir um
+segundo modelo de concorrencia num projeto que ja tinha um foi o erro de
+origem. Os testes cairam de instaveis para 0.86 s.
+
 ## 4. Divergencias encontradas entre o plano e a realidade
 
 Registradas aqui porque quem repetir este plano vai bater nas mesmas.
