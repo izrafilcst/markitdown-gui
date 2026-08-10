@@ -326,14 +326,26 @@ QListWidget::item:hover {
     background-color: ${surface_alt};
     border-color: ${border};
 }
+/* Selecao com e sem foco usam o MESMO fundo, de proposito.
+
+   Antes `:selected` usava surface_alt e `:selected:active` usava
+   accent_soft. O widget embutido em cada linha nao tem como saber qual
+   dos dois esta valendo, entao pintava o texto para um fundo e recebia o
+   outro: no tema escuro isso deu texto escuro sobre fundo escuro.
+
+   Unificar custa a distincao visual entre janela focada e nao focada, e
+   paga com legibilidade garantida nos dois temas. */
 QListWidget::item:selected {
-    background-color: ${surface_alt};
+    background-color: ${accent_soft};
     border-color: ${border_strong};
-    color: ${ink};
+    color: ${on_accent};
 }
 QListWidget::item:selected:active {
+    /* O fundo da selecao ativa e accent_soft, uma cor CLARA nos dois
+       temas. Por isso o texto e on_accent e nao ink: no tema escuro o
+       ink vira claro e o par cai para 1.46:1, praticamente invisivel. */
     background-color: ${accent_soft};
-    color: ${ink};
+    color: ${on_accent};
 }
 
 /* Campos de texto. */

@@ -140,3 +140,125 @@ def test_nao_usa_cor_literal(qapp, livro):
 
     fonte = Path("markitdown_gui/ui/history_view.py").read_text(encoding="utf-8")
     assert not re.search(r"#[0-9a-fA-F]{6}\b", fonte)
+
+
+NOME_LONGO = "mapeamento_de_stack__avaliacao_completa_do_candidato_2026.pdf"
+
+
+def _com_nome_longo(pasta):
+    h = Historico(pasta / "historico.db")
+    h.registrar(
+        origem=Path(r"C:\Downloads") / NOME_LONGO,
+        destino=pasta / "saida.md",
+        caracteres=2500,
+        sucesso=True,
+    )
+    return h
+
+
+def test_nome_longo_nao_sai_do_box(qapp, pasta):
+    """Nome que nao cabe precisa ser encurtado, nao transbordar a linha."""
+    aba = AbaRecentes(_com_nome_longo(pasta))
+    aba.resize(360, 300)
+    aba.show()
+    qapp.processEvents()
+
+    linha = aba.linha_widget(0)
+    assert linha.width() <= aba.lista.viewport().width() + 2, "linha mais larga que a lista"
+    assert linha.texto_do_nome() != NOME_LONGO, "o nome nao foi encurtado"
+    assert NOME_LONGO in linha.nome_completo()
+    aba.close()
+
+
+def test_nome_curto_fica_intacto(qapp, livro):
+    aba = AbaRecentes(livro)
+    aba.resize(900, 300)
+    aba.show()
+    qapp.processEvents()
+    assert aba.linha_widget(0).texto_do_nome() == "terceiro.csv"
+    aba.close()
+
+
+def test_selecionar_recolore_o_texto(qapp, livro):
+    """Widget embutido nao herda o estilo de item selecionado do QSS.
+
+    O fundo da selecao e claro nos dois temas. Sem recolorir, o texto da
+    linha continua com a cor do estado e some: medido em 1.06:1 no tema
+    escuro. A linha precisa saber que esta selecionada.
+    """
+    from markitdown_gui.ui import theme
+
+    aba = AbaRecentes(livro)
+    linha = aba.linha_widget(0)
+
+    assert linha.cor_do_texto() != theme.COLOR["on_accent"]
+    aba.lista.setCurrentRow(0)
+    qapp.processEvents()
+    assert linha.cor_do_texto() == theme.COLOR["on_accent"]
+
+
+def test_desselecionar_volta_a_cor_do_estado(qapp, livro):
+    from markitdown_gui.ui import theme
+
+    aba = AbaRecentes(livro)
+    linha = aba.linha_widget(0)
+    aba.lista.setCurrentRow(0)
+    qapp.processEvents()
+    aba.lista.clearSelection()
+    qapp.processEvents()
+    assert linha.cor_do_texto() != theme.COLOR["on_accent"]
+    assert linha.cor_do_texto() == theme.COLOR["success_text"]
+
+
+def test_selecao_move_de_uma_linha_para_outra(qapp, livro):
+    """Selecionar a segunda precisa devolver a primeira ao normal."""
+    from markitdown_gui.ui import theme
+
+    aba = AbaRecentes(livro)
+    primeira, segunda = aba.linha_widget(0), aba.linha_widget(1)
+
+    aba.lista.setCurrentRow(0)
+    qapp.processEvents()
+    aba.lista.setCurrentRow(1)
+    qapp.processEvents()
+
+    assert segunda.cor_do_texto() == theme.COLOR["on_accent"]
+    assert primeira.cor_do_texto() != theme.COLOR["on_accent"]
+
+
+def test_linha_de_falha_tambem_recolore(qapp, pasta):
+    from markitdown_gui.ui import theme
+
+    h = Historico(pasta / "historico.db")
+    h.registrar(origem=Path(r"C:\a\ruim.pdf"), destino=Path(), caracteres=0,
+                sucesso=False, mensagem="Arquivo corrompido")
+    aba = AbaRecentes(h)
+    linha = aba.linha_widget(0)
+    assert linha.cor_do_texto() == theme.COLOR["danger_text"]
+    aba.lista.setCurrentRow(0)
+    qapp.processEvents()
+    assert linha.cor_do_texto() == theme.COLOR["on_accent"]
+
+
+def test_linha_do_historico_cabe_dentro_do_item(qapp, livro):
+    """O item precisa reservar a altura da linha MAIS o espaco do estilo.
+
+    Cuidado com a armadilha que me pegou aqui: `LinhaRecente` usa
+    setFixedHeight, entao `height()` e `sizeHint()` sao sempre iguais e
+    comparar os dois nao prova nada. O que importa e comparar a altura
+    gravada no ITEM com a altura do widget mais a borda, o padding e a
+    margem que o QSS consome. Sem isso o widget transborda a caixa e a
+    segunda linha some, que foi o que apareceu na tela.
+    """
+    from markitdown_gui.ui import history_view
+
+    aba = AbaRecentes(livro)
+    casca = aba.lista.item(0)
+    linha = aba.linha_widget(0)
+
+    reservado = casca.sizeHint().height()
+    preciso = linha.height() + history_view.CHROME_VERTICAL
+    assert reservado >= preciso, (
+        f"item reserva {reservado}px, a linha precisa de {preciso}px "
+        f"({linha.height()} de conteudo mais {history_view.CHROME_VERTICAL} de estilo)"
+    )

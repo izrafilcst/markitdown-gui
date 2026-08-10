@@ -57,6 +57,7 @@ class ListaDaFila(QListWidget):
         )
         self.setAccessibleName("Fila de conversao")
         self._linhas: dict[str, LinhaDaFila] = {}
+        self.itemSelectionChanged.connect(self._ao_mudar_selecao)
 
     # leitura
 
@@ -110,6 +111,18 @@ class ListaDaFila(QListWidget):
         self._linhas.clear()
 
     # apoio
+
+    def _ao_mudar_selecao(self) -> None:
+        """Avisa cada linha se ela esta selecionada.
+
+        Segue a selecao, e nao a linha atual: e `:selected` que pinta o
+        fundo no QSS, e a cor do texto precisa acompanhar o fundo.
+        """
+        selecionados = {
+            c.data(PAPEL_ID) for c in self.selectedItems()
+        }
+        for item_id, linha in self._linhas.items():
+            linha.definir_selecionada(item_id in selecionados)
 
     def _altura_necessaria(self, linha: LinhaDaFila) -> QSize:
         """Altura do conteudo mais o espaco que a folha de estilo consome."""

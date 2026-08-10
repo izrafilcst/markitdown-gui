@@ -140,3 +140,112 @@ def test_qss_acompanha_o_tema():
 
 def test_tema_do_sistema_responde_algo_valido(qapp):
     assert theme.tema_do_sistema() in ("claro", "escuro")
+
+
+# ------------------------------------------------- selecao na lista
+
+# Todo texto que pode aparecer numa linha selecionada. O fundo da selecao
+# ativa e `accent_soft`, que e uma cor CLARA nos dois temas, entao texto
+# claro por cima some. No tema escuro a medicao dava 1.01:1 para
+# `ink_soft`, ou seja, invisivel.
+# Cores de estado que aparecem na linha. Nenhuma delas serve como texto
+# sobre a selecao, em nenhum dos dois temas.
+TOKENS_DE_ESTADO = ["success_text", "danger_text", "warning_text"]
+
+
+@pytest.mark.parametrize("tema", ["claro", "escuro"])
+def test_texto_em_linha_selecionada_passa_wcag(tema):
+    """Selecionar uma linha nao pode apagar o texto dela.
+
+    A regra que resolve: sobre `accent_soft` o texto e sempre `on_accent`,
+    que e escuro nos dois temas. E a mesma regra que ja vale para qualquer
+    preenchimento de acento, so que agora aplicada tambem a selecao.
+    """
+    paleta = theme.PALETA_CLARA if tema == "claro" else theme.PALETA_ESCURA
+    obtido = razao(paleta["on_accent"], paleta["accent_soft"])
+    assert obtido >= 4.5, f"[{tema}] texto selecionado da {obtido:.2f}:1"
+
+
+@pytest.mark.parametrize("tema", ["claro", "escuro"])
+@pytest.mark.parametrize("token", TOKENS_DE_ESTADO)
+def test_cor_de_estado_nao_serve_sobre_a_selecao(tema, token):
+    """Documenta por que a linha precisa recolorir, e nao so herdar.
+
+    Se alguma destas passasse, daria para manter a cor do estado quando a
+    linha e selecionada. Nenhuma passa em nenhum dos dois temas, entao
+    recolorir e obrigatorio. Este teste existe para impedir que alguem
+    reverta a recoloracao achando que era enfeite.
+    """
+    paleta = theme.PALETA_CLARA if tema == "claro" else theme.PALETA_ESCURA
+    obtido = razao(paleta[token], paleta["accent_soft"])
+    assert obtido < 4.5, (
+        f"[{tema}] {token} agora passa sobre a selecao com {obtido:.2f}:1. "
+        "Se isso foi intencional, revise a necessidade de recolorir."
+    )
+
+
+def test_ink_serve_no_claro_e_reprova_no_escuro():
+    """Por que `ink` nao pode ser a cor da selecao.
+
+    Este e o par que enganou: no tema claro `ink` da 9.06:1 sobre a
+    selecao e parece resolvido. No escuro o mesmo token vira claro e cai
+    para 1.46:1, praticamente invisivel. Foi assim que o defeito passou
+    despercebido ate aparecer na tela de alguem usando tema escuro.
+    """
+    assert razao(theme.PALETA_CLARA["ink"], theme.PALETA_CLARA["accent_soft"]) >= 4.5
+    assert razao(theme.PALETA_ESCURA["ink"], theme.PALETA_ESCURA["accent_soft"]) < 2.0
+
+
+def test_qss_pinta_selecao_com_on_accent():
+    """A folha de estilo precisa mandar on_accent, e nao ink.
+
+    Verificado no tema ESCURO de proposito: no claro os dois tokens tem o
+    mesmo valor, entao o teste passaria sem provar nada.
+    """
+    import re
+
+    try:
+        theme.definir_tema("escuro")
+        folha = theme.qss()
+        bloco = re.search(r"QListWidget::item:selected:active\s*\{([^}]*)\}", folha)
+        assert bloco, "nao ha regra para item selecionado ativo"
+        corpo = bloco.group(1)
+        assert theme.PALETA_ESCURA["on_accent"] in corpo, (
+            "selecao ativa nao usa on_accent como cor de texto"
+        )
+        assert theme.PALETA_ESCURA["ink"] not in corpo, (
+            "selecao ativa ainda usa ink, que some sobre o fundo claro da selecao"
+        )
+    finally:
+        theme.definir_tema("claro")
+
+
+@pytest.mark.parametrize("tema", ["claro", "escuro"])
+def test_selecao_tem_o_mesmo_fundo_com_e_sem_foco(tema):
+    """Os dois estados de selecao precisam usar o mesmo fundo.
+
+    O QSS distingue `:selected` de `:selected:active`, e antes cada um
+    usava um fundo diferente: `surface_alt` (escuro no tema escuro) e
+    `accent_soft` (claro nos dois). O widget embutido nao tem como saber
+    qual dos dois esta valendo, entao pintava o texto para um fundo e
+    recebia o outro, e o resultado foi texto escuro sobre fundo escuro.
+
+    Unificar custa a distincao visual entre janela focada e nao focada, e
+    paga com legibilidade garantida. Foi uma troca deliberada.
+    """
+    import re
+
+    try:
+        theme.definir_tema(tema)
+        folha = theme.qss()
+        fundos = re.findall(
+            r"QListWidget::item:selected(?::active)?\s*\{[^}]*?"
+            r"background-color:\s*([^;]+);",
+            folha,
+        )
+        assert len(fundos) >= 2, "faltam as duas regras de selecao"
+        assert len(set(f.strip() for f in fundos)) == 1, (
+            f"fundos de selecao diferentes: {fundos}"
+        )
+    finally:
+        theme.definir_tema("claro")

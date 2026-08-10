@@ -21,12 +21,14 @@ from __future__ import annotations
 from pathlib import Path
 
 from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtGui import QFontMetrics
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QListWidget,
     QListWidgetItem,
     QPushButton,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -37,6 +39,13 @@ from . import icons, theme
 ALVO_MINIMO = 32
 ALTURA_DA_LINHA = 64
 LIMITE = 200
+
+# Espaco que `QListWidget::item` consome no QSS: borda, padding e
+# margem, em cima e embaixo. O item precisa reservar isso ALEM da
+# altura da linha, senao o widget transborda a caixa e o texto de
+# baixo some. E a mesma conta de queue_view.py, pela mesma razao.
+_BORDA_DO_ITEM = 1
+CHROME_VERTICAL = 2 * (_BORDA_DO_ITEM + theme.SPACE["sm"] + theme.SPACE["xs"])
 
 
 class LinhaRecente(QWidget):
@@ -53,8 +62,11 @@ class LinhaRecente(QWidget):
         )
         raiz.setSpacing(theme.SPACE["md"])
 
-        token = "success_text" if registro.sucesso else "danger_text"
-        marca = QLabel()
+        self._token = "success_text" if registro.sucesso else "danger_text"
+        self._selecionada = False
+        token = self._token
+        self._marca = QLabel()
+        marca = self._marca
         marca.setPixmap(
             icons.pixmap(
                 "check" if registro.sucesso else "alerta", theme.COLOR[token], 18
@@ -64,9 +76,16 @@ class LinhaRecente(QWidget):
         meio = QVBoxLayout()
         meio.setSpacing(theme.SPACE["xs"])
 
-        self._nome = QLabel(registro.origem.name)
+        self._nome_completo = registro.origem.name
+        self._nome = QLabel(self._nome_completo)
         self._nome.setObjectName("LinhaNome")
         self._nome.setToolTip(str(registro.origem))
+        # Sem isto o rotulo exige a largura do nome inteiro e a linha
+        # transborda a lista, em vez de o nome encolher.
+        self._nome.setMinimumWidth(0)
+        self._nome.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred
+        )
 
         self._detalhe = QLabel(self._resumo())
         self._detalhe.setObjectName("LinhaEstado")
@@ -91,6 +110,57 @@ class LinhaRecente(QWidget):
 
     def texto(self) -> str:
         return f"{self._nome.text()}  {self._detalhe.text()}"
+
+    def texto_do_nome(self) -> str:
+        return self._nome.text()
+
+    def nome_completo(self) -> str:
+        return self._nome_completo
+
+    def cor_do_texto(self) -> str:
+        """Token de cor em uso no momento, para a interface e para o teste."""
+        return theme.COLOR["on_accent" if self._selecionada else self._token]
+
+    def definir_selecionada(self, selecionada: bool) -> None:
+        """Recolore a linha quando ela entra ou sai da selecao.
+
+        Widget colocado com setItemWidget NAO herda o estilo de
+        `QListWidget::item:selected` do QSS: ele e um widget filho, e nao
+        o item. Sem esta chamada, o texto continua com a cor do estado
+        sobre o fundo claro da selecao, o que mede 1.06:1 no tema escuro.
+        """
+        if selecionada == self._selecionada:
+            return
+        self._selecionada = selecionada
+        cor = self.cor_do_texto()
+        self._detalhe.setStyleSheet(f"color: {cor};")
+        self._nome.setStyleSheet(f"color: {cor};")
+        self._marca.setPixmap(
+            icons.pixmap(
+                "check" if self.registro.sucesso else "alerta", cor, 18
+            )
+        )
+
+    def _encurtar_nome(self) -> None:
+        """Encaixa o nome na largura disponivel, cortando pelo meio.
+
+        Pelo meio para preservar a extensao, que e o que identifica o
+        arquivo numa lista de conversoes.
+        """
+        largura = self._nome.width()
+        if largura <= 0:
+            self._nome.setText(self._nome_completo)
+            return
+        metrica = QFontMetrics(self._nome.font())
+        self._nome.setText(
+            metrica.elidedText(
+                self._nome_completo, Qt.TextElideMode.ElideMiddle, largura
+            )
+        )
+
+    def resizeEvent(self, evento) -> None:
+        super().resizeEvent(evento)
+        self._encurtar_nome()
 
     def sizeHint(self) -> QSize:
         return QSize(super().sizeHint().width(), ALTURA_DA_LINHA)
@@ -121,6 +191,7 @@ class AbaRecentes(QWidget):
         self.lista.setObjectName("ListaRecentes")
         self.lista.setAccessibleName("Conversoes recentes")
         self.lista.itemDoubleClicked.connect(self._ao_clicar_duas_vezes)
+        self.lista.itemSelectionChanged.connect(self._ao_mudar_selecao)
 
         self.rotulo_vazio = QLabel(self.mensagem_de_vazio())
         self.rotulo_vazio.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -163,7 +234,10 @@ class AbaRecentes(QWidget):
         for registro in self.historico.recentes(limite=LIMITE):
             linha = LinhaRecente(registro)
             casca = QListWidgetItem(self.lista)
-            casca.setSizeHint(linha.sizeHint())
+            pedido = linha.sizeHint()
+            casca.setSizeHint(
+                QSize(pedido.width(), pedido.height() + CHROME_VERTICAL)
+            )
             self.lista.addItem(casca)
             self.lista.setItemWidget(casca, linha)
             self._linhas.append(linha)
@@ -178,6 +252,9 @@ class AbaRecentes(QWidget):
         )
 
     # ------------------------------------------------ leitura para teste
+
+    def linha_widget(self, indice: int) -> LinhaRecente:
+        return self._linhas[indice]
 
     def quantidade_exibida(self) -> int:
         return len(self._linhas)
@@ -219,6 +296,21 @@ class AbaRecentes(QWidget):
         self.atualizar()
 
     # ------------------------------------------------------------ apoio
+
+    def _ao_mudar_selecao(self) -> None:
+        """Avisa cada linha se ela esta selecionada ou nao.
+
+        Feito no widget e nao so no QSS porque widget embutido com
+        setItemWidget nao recebe o estado de selecao do item.
+        """
+        # Segue a SELECAO, e nao a linha atual. No Qt os dois estados sao
+        # diferentes: `currentRow` e o foco de teclado e sobrevive a um
+        # clearSelection. Quem pinta o fundo no QSS e `:selected`, entao
+        # seguir outra coisa deixaria a cor do texto fora de sincronia com
+        # o fundo, que e justamente o defeito que estamos consertando.
+        selecionadas = {self.lista.row(c) for c in self.lista.selectedItems()}
+        for indice, linha in enumerate(self._linhas):
+            linha.definir_selecionada(indice in selecionadas)
 
     def _linha_selecionada(self) -> int:
         return self.lista.currentRow()

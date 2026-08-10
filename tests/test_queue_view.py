@@ -254,3 +254,44 @@ def test_nome_curto_fica_intacto(qapp):
     qapp.processEvents()
     assert lista.linha(item.id).texto_do_nome() == "a.pdf"
     lista.close()
+
+
+def test_selecionar_linha_da_fila_recolore(qapp):
+    """A fila tem o mesmo defeito de selecao que o historico tinha.
+
+    Widget embutido nao herda `:selected` do QSS, entao sem recolorir o
+    texto do estado fica com a cor de estado sobre o fundo claro da
+    selecao. No tema escuro isso mede 1.06:1.
+    """
+    from markitdown_gui.ui import theme
+
+    lista = ListaDaFila()
+    (item,) = _itens("a.pdf")
+    lista.adicionar([item])
+    linha = lista.linha(item.id)
+
+    assert linha.cor_do_texto() != theme.COLOR["on_accent"]
+    lista.setCurrentRow(0)
+    qapp.processEvents()
+    assert linha.cor_do_texto() == theme.COLOR["on_accent"]
+
+    lista.clearSelection()
+    qapp.processEvents()
+    assert linha.cor_do_texto() != theme.COLOR["on_accent"]
+
+
+def test_selecao_da_fila_sobrevive_a_mudanca_de_estado(qapp):
+    """Atualizar o item nao pode devolver a cor errada a uma linha selecionada."""
+    from markitdown_gui.ui import theme
+
+    lista = ListaDaFila()
+    (item,) = _itens("a.pdf")
+    lista.adicionar([item])
+    lista.setCurrentRow(0)
+    qapp.processEvents()
+
+    item.estado = Estado.CONCLUIDO
+    lista.atualizar(item)
+    qapp.processEvents()
+
+    assert lista.linha(item.id).cor_do_texto() == theme.COLOR["on_accent"]

@@ -77,6 +77,9 @@ class LinhaDaFila(QWidget):
         self.item_id = item.id
         self._acao_atual: str | None = None
         self._icone_estado = QIcon()
+        self._selecionada = False
+        self._token_estado = "ink_soft"
+        self._icone_do_estado = "ampulheta"
 
         raiz = QHBoxLayout(self)
         raiz.setContentsMargins(
@@ -199,12 +202,9 @@ class LinhaDaFila(QWidget):
             texto = f"{texto}: {item.mensagem}"
         self._estado.setText(texto)
         self._estado.setToolTip(texto)
-        self._estado.setStyleSheet(f"color: {theme.COLOR[token_cor]};")
-
-        self._icone_estado = icons.icone(nome_icone, theme.COLOR[token_cor], 16)
-        self._icone_estado_label.setPixmap(
-            icons.pixmap(nome_icone, theme.COLOR[token_cor], 16)
-        )
+        self._token_estado = token_cor
+        self._icone_do_estado = nome_icone
+        self._pintar_texto()
 
         self._barra.setVisible(item.estado is Estado.PROCESSANDO)
         self.botao_detalhe.setVisible(bool(item.detalhe))
@@ -222,6 +222,38 @@ class LinhaDaFila(QWidget):
             self.botao_acao.setToolTip(rotulo)
 
         self.setAccessibleName(f"{item.nome}, {texto}")
+
+    def cor_do_texto(self) -> str:
+        """Token de cor em uso agora, considerando a selecao."""
+        return theme.COLOR[
+            "on_accent" if self._selecionada else self._token_estado
+        ]
+
+    def _pintar_texto(self) -> None:
+        """Aplica a cor certa ao texto e ao icone de estado.
+
+        Quando a linha esta selecionada tudo vira `on_accent`, porque o
+        fundo da selecao e claro nos dois temas. Fora da selecao, cada
+        estado volta a sua propria cor.
+        """
+        cor = self.cor_do_texto()
+        self._estado.setStyleSheet(f"color: {cor};")
+        self._nome.setStyleSheet(f"color: {cor};" if self._selecionada else "")
+        self._icone_estado = icons.icone(self._icone_do_estado, cor, 16)
+        self._icone_estado_label.setPixmap(
+            icons.pixmap(self._icone_do_estado, cor, 16)
+        )
+
+    def definir_selecionada(self, selecionada: bool) -> None:
+        """Recolore quando entra ou sai da selecao.
+
+        Igual ao historico: setItemWidget nao propaga o estado do item
+        para o widget embutido, entao a linha precisa ser avisada.
+        """
+        if selecionada == self._selecionada:
+            return
+        self._selecionada = selecionada
+        self._pintar_texto()
 
     def _encurtar_nome(self) -> None:
         """Encaixa o nome na largura disponivel, cortando pelo meio.
